@@ -46,7 +46,12 @@ struct node{
 	float time;
 	};
 
-
+struct segl {
+	int beg;
+	struct node *ptree;
+	int next;
+	}  ;
+	
 /*KRT -- prototypes added*/
 void ordran(int n, double pbuf[]);
 void ranvec(int n, double pbuf[]);
@@ -61,3 +66,6 @@ int tdesn(struct node *ptree, int tip, int node );
 int pick2(int n, int *i, int *j);
 int xover(int nsam,int ic, int is);
 int links(int c);
+void seedit( const char * ) ;
+struct segl *segtre_mig(struct c_params *cp, int *pnsegs);
+int commandlineseed(char **seeds) ;

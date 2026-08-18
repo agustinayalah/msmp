@@ -3,10 +3,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-double ran1(){
+double ran1() ;
+void seedit(char *flag) ;
+int commandlineseed(char **seeds) ;
 
-        double drand48();
-        return( drand48() );
+double ran1(){
+    double drand48();
+    return(drand48());
 }               
 
 void seedit( char *flag ){
@@ -16,30 +19,30 @@ void seedit( char *flag ){
 	int i;
 
 	if( flag[0] == 's' ) {
-	   pfseed = fopen("seedms","r");
-	   if( pfseed == NULL ) {
-           seedv[0] = 3579 ; seedv[1] = 27011; seedv[2] = 59243; 
-	   }
-	   else {
-	       seedv2[0] = 3579; seedv2[1] = 27011; seedv2[2] = 59243; 
-           for(i=0;i<3;i++){ 
-		       if(  fscanf(pfseed," %hd",seedv+i) < 1 )
-		            seedv[i] = seedv2[i] ;
-		   }
-	       fclose( pfseed);
-	   }
-	   seed48( seedv );   
+		pfseed = fopen("seedms","r");
+		if( pfseed == NULL ) {
+			seedv[0] = 3579 ; seedv[1] = 27011; seedv[2] = 59243; 
+		}
+		else {
+			seedv2[0] = 3579; seedv2[1] = 27011; seedv2[2] = 59243; 
+			for(i=0;i<3;i++){ 
+				if(  fscanf(pfseed," %hd",seedv+i) < 1 )
+					seedv[i] = seedv2[i] ;	
+			}
+			fclose( pfseed);
+		}
+		seed48( seedv );   
 
-       printf("\n%d %d %d\n", seedv[0], seedv[1], seedv[2] );    
+		printf("\n%d %d %d\n", seedv[0], seedv[1], seedv[2] );    
 	}
 	else {
-	     pfseed = fopen("seedms","w");
-         pseed = seed48(seedv);
-         fprintf(pfseed,"%d %d %d\n",pseed[0], pseed[1],pseed[2]);     
+		pfseed = fopen("seedms","w");
+		pseed = seed48(seedv);
+		fprintf(pfseed,"%d %d %d\n",pseed[0], pseed[1],pseed[2]);     
 	}
 }
 
-int commandlineseed( char **seeds){
+int commandlineseed(char **seeds){
 	
 	unsigned short seedv[3], *seed48();
 

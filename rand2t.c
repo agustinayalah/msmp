@@ -2,30 +2,31 @@
      and seeding from the clock  */
 /*  Thanks to Alan Rogers for suggestion of using pid.   17 Nov 2018 */
 
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
 #include <unistd.h>
 
-double ran1(){
+double ran1() ;
+void seedit(const char *flag) ;
+int commandlineseed(char **seeds) ;
 
+double ran1(){
 	int rand();
 	return( rand()/(RAND_MAX+1.0)  );
 }
-
 
 void seedit( const char *flag){
 
 	FILE *fopen(), *pfseed;
 	unsigned int seed2, tempseed ;
 
-  if( flag[0] == 's' ) {
-      time_t      currtime = time(NULL);
-      unsigned long pid = (unsigned long) getpid();
-      tempseed = (unsigned int)currtime^pid;
-	srand( seed2 = tempseed ) ;
-        printf("\n%d\n", seed2 );    
+	if( flag[0] == 's' ) {
+		time_t      currtime = time(NULL);
+		unsigned long pid = (unsigned long) getpid();
+		tempseed = (unsigned int)currtime^pid;
+		srand( seed2 = tempseed ) ;
+		printf("\n%d\n", seed2 );    
 	}
 
 }
