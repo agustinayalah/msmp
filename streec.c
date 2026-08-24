@@ -187,11 +187,11 @@ struct segl *segtre_mig(struct c_params *cp, int *pnsegs) {
 /* Main loop */
 
     while ((nchrom + numanc) > 1) {     /* adna */
-        prec = nlinks * r;
+        prec = nlinks * r;  
         cin = nlinks * rf;
         clefta = cleft * rft;
         prect = prec + cin + clefta;
-        mig = 0.0;
+        mig = 0.0;                       // Migración
         for (i = 0; i < npop; i++)
             mig += config[i] * migm[i][i];
         if ((npop > 1) && (mig == 0.0) && (nextevent == NULL)) {

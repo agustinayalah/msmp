@@ -124,6 +124,7 @@ void ndes_setup(struct node *ptree, int nsam) ;
 void biggerlist(int nsam,  char **list ) ;
 char ** cmatrix(int nsam, int len) ;
 void locate(int n,double beg, double len,double *ptr) ;
+
 void getpars(int argc, char *argv[], int *phowmany) ;
 void argcheck( int arg, int argc, char *argv[]) ;
 void usage() ;
@@ -156,10 +157,9 @@ int main(int argc, char *argv[]){
 	ntbs = 0 ;   
 	tbsparamstrs = (char **)malloc( argc*sizeof(char *) ) ;
 
-	for( i=0; i<argc; i++) printf("%s ",argv[i]);
-	for( i =0; i<argc; i++) tbsparamstrs[i] = (char *)malloc(30*sizeof(char) ) ;
-	for( i = 1; i<argc ; i++)
-			if( strcmp( argv[i],"tbs") == 0 )  argv[i] = tbsparamstrs[ ntbs++] ;
+	for(i = 0 ; i<argc ; i++) printf("%s ",argv[i]);
+	for(i = 0 ; i<argc ; i++) tbsparamstrs[i] = (char *)malloc(30*sizeof(char) ) ;
+	for(i = 1 ; i<argc ; i++) if( strcmp( argv[i],"tbs") == 0 )  argv[i] = tbsparamstrs[ ntbs++] ;
 	
 	count=0;
 
@@ -171,43 +171,44 @@ int main(int argc, char *argv[]){
 	pf = stdout ;
 
 	if( pars.mp.segsitesin ==  0 ) {	// Tasa de mutación fija con -t theta
-	     list = cmatrix(pars.cp.nsam,maxsites+1);
-        posit = (double *)malloc( (unsigned)( maxsites*sizeof( double)) ) ;
-        agevec = (double *)malloc( (unsigned)( maxsites*sizeof( double)) ) ;
+	    list = cmatrix(pars.cp.nsam, maxsites+1) ;
+        posit = (double *)malloc( (unsigned)( maxsites*sizeof( double)) ) ;		// posit y agevec son los metadatos de los segmentos como la 
+        agevec = (double *)malloc( (unsigned)( maxsites*sizeof( double)) ) ;	// posición donde ocurrió la mutación (rango de 0 a 1) o la edad 
 	}
 	else {		// Sitios segregantes fijos -s segsites
-	     list = cmatrix(pars.cp.nsam, pars.mp.segsitesin+1 ) ;
+	    list = cmatrix(pars.cp.nsam, pars.mp.segsitesin+1 ) ;
         posit = (double *)malloc( (unsigned)( pars.mp.segsitesin*sizeof( double)) ) ;
         agevec = (double *)malloc( (unsigned)( pars.mp.segsitesin*sizeof( double)) ) ;
-	     if( pars.mp.theta > 0.0 ){
-		    segfac = 1.0 ;
-		    for(  i= pars.mp.segsitesin; i > 1; i--) segfac *= i ;
-		 }
+	    if( pars.mp.theta > 0.0 ){
+			segfac = 1.0 ;
+		    for(i= pars.mp.segsitesin; i > 1; i--) 
+				segfac *= i ;
+		}
 	}
 
     while( howmany-count++ ) {
 	   if( (ntbs > 0) && (count >1 ) ){
-	         for( k=0; k<ntbs; k++){ 
+			for( k=0; k<ntbs; k++){ 
 			    if( scanf(" %s", tbsparamstrs[k]) == EOF ){
 			       if( !pars.commandlineseedflag ) seedit( "end" );
 				   exit(0);
 				}
-			 }
-			 getpars( argc, argv, &howmany) ;
+			}
+			getpars( argc, argv, &howmany) ;
 	   }
 	   
 		fprintf(pf,"\n//");
-		if( ntbs >0 ){ for(k=0; k< ntbs; k++) printf("\t%s", tbsparamstrs[k] ) ; }
+		if (ntbs > 0){ for (k=0; k< ntbs; k++) printf("\t%s", tbsparamstrs[k]) ; }
 		printf("\n");
 
-        segsites = gensam( list, &probss, &tmrca, &ttot ) ; 
+        segsites = gensam(list, &probss, &tmrca, &ttot) ; 
 
   		if( pars.mp.timeflag ) fprintf(pf,"time:\t%lf\t%lf\n",tmrca, ttot ) ;
 		
-        if( (segsites > 0 ) || ( pars.mp.theta > 0.0 ) ) {
-   	       if( (pars.mp.segsitesin > 0 ) && ( pars.mp.theta > 0.0 )) 
+        if( (segsites > 0 ) || ( pars.mp.theta > 0.0 ) ) {	// Impresión de los resultados
+   	       	if( (pars.mp.segsitesin > 0 ) && ( pars.mp.theta > 0.0 )) 
 		       fprintf(pf,"prob: %g\n", probss ) ;
-           fprintf(pf,"segsites: %d\n",segsites);
+           	fprintf(pf,"segsites: %d\n",segsites);
             if( segsites > 0 )    fprintf(pf,"positions: ");
             for( i=0; i<segsites; i++)
                 fprintf(pf,"%6.*lf ", pars.output_precision,posit[i] );
@@ -224,17 +225,29 @@ int main(int argc, char *argv[]){
                 }
                 fprintf(pf,"\n");
             }
-	       if( segsites > 0 )
-	          for(i=0;i<pars.cp.nsam; i++) { fprintf(pf,"%s\n", list[i] ); }
+	       	if( segsites > 0 )
+				for(i=0;i<pars.cp.nsam; i++) { fprintf(pf,"%s\n", list[i] ); }
 	    }
     }
 
-	if( !pars.commandlineseedflag ) seedit( "end" );
+	if (!pars.commandlineseedflag) seedit( "end" );
 
 }
 
-
-
+/*
+*	@brief Genera los arboles de coalescencia y aplica las mutaciones.
+*	
+*	Invoca a segtre_mig() que guarda en seglst el arbol de coalescencia. Luego en función de las opciones ingresadas, 
+*	muestra el arbol en formato Newick o muestra el tiempo que le tomó a cada rama hasta coalescer. Por último 
+*	aplica las mutaciones sobre las ramas de manera aleatoria con make_gametes().
+*
+*	@param[out]	list : Es la lista de segmentos de ADN de los individuos a completar
+*	@param[out]	pprobss : Es la probailidad de que bajo una tasa de mutación theeta se den n segsites fijos 
+*	@param[out]	ptmrca : El tiempo en llegar al most recent common ancester
+*	@param[out]	pttot : El tiempo total para la coalescencia del arbol
+*	@return	ns : La cantidad de sitios segregantes
+*
+*/
 int gensam(char **list, double *pprobss, double *ptmrca, double *pttot) {
 	int nsegs, h, i, k, j, seg, ns, start, end, len, segsit ;
 	struct segl *seglst ; 
@@ -247,6 +260,7 @@ int gensam(char **list, double *pprobss, double *ptmrca, double *pttot) {
 
 	nsites = pars.cp.nsites ;
 	nsinv = 1./nsites;
+
 	seglst = segtre_mig(&(pars.cp),  &nsegs ) ;
 	
 	nsam = pars.cp.nsam;
@@ -254,10 +268,10 @@ int gensam(char **list, double *pprobss, double *ptmrca, double *pttot) {
     theta = pars.mp.theta ;
 	mfreq = pars.mp.mfreq ;
 
-	if( pars.mp.treeflag ) {
+	if (pars.mp.treeflag){
 	  	ns = 0 ;
-	    for( seg=0, k=0; k<nsegs; seg=seglst[seg].next, k++) {
-			if( (pars.cp.r > 0.0 ) || (pars.cp.f > 0.0) ){
+	    for (seg=0, k=0; k<nsegs; seg=seglst[seg].next, k++){
+			if ((pars.cp.r > 0.0 ) || (pars.cp.f > 0.0)){
 				end = ( k<nsegs-1 ? seglst[seglst[seg].next].beg -1 : nsites-1 );
 				start = seglst[seg].beg ;
 				len = end - start + 1 ;
@@ -268,7 +282,7 @@ int gensam(char **list, double *pprobss, double *ptmrca, double *pttot) {
 	    }
 	}
 
-	if( pars.mp.timeflag ) {
+	if (pars.mp.timeflag){
 		tt = 0.0 ;
 		for( seg=0, k=0; k<nsegs; seg=seglst[seg].next, k++) { 
 			if( mfreq > 1 ) ndes_setup( seglst[seg].ptree, nsam );
@@ -284,7 +298,7 @@ int gensam(char **list, double *pprobss, double *ptmrca, double *pttot) {
 		*pttot = tt ;
 	}	
 	
-    if( (segsitesin == 0) && ( theta > 0.0)   ) {
+    if( (segsitesin == 0) && ( theta > 0.0)   ){	// Si se pasa theta sin segsites fijos
 		ns = 0 ;
 		for( seg=0, k=0; k<nsegs; seg=seglst[seg].next, k++) { 
 			if( mfreq > 1 ) ndes_setup( seglst[seg].ptree, nsam );
@@ -307,7 +321,7 @@ int gensam(char **list, double *pprobss, double *ptmrca, double *pttot) {
 			ns += segsit;
 	  }
     }
-	else if( segsitesin > 0 ) {
+	else if (segsitesin > 0){	// Si se pasa con segsites fijos
 
 		pk = (double *)malloc((unsigned)(nsegs*sizeof(double)));
 		ss = (int *)malloc((unsigned)(nsegs*sizeof(int)));
@@ -375,7 +389,7 @@ char ** cmatrix(int nsam, int len){
 	int i;
 	char **m;
 
-	if( ! ( m = (char **) malloc( (unsigned) nsam*sizeof( char* ) ) ) ) perror("alloc error in cmatrix") ;
+	if (!( m = (char **) malloc( (unsigned) nsam*sizeof( char* ) ) ) ) perror("alloc error in cmatrix") ;
 	for( i=0; i<nsam; i++) {
 		if( ! ( m[i] = (char *) malloc( (unsigned) len*sizeof( char ) ))) perror("alloc error in cmatric. 2");
 	}
@@ -903,6 +917,7 @@ void prtree( struct node *ptree, int nsam){
 	free( descr ) ;
 }
 
+// Función para imprimir los arboles en formato de Newick
 void parens( struct node *ptree, int *descl, int *descr,  int noden){
 	double time ;
 

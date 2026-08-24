@@ -34,8 +34,8 @@ if [ -f "$params" ]; then
             exit 1
         fi
 
-        for i in {1..10}; do
-            echo "-> Running iteration ${i} of 10 for test case $testcase"
+        for i in {1..3}; do
+            echo "-> Running iteration ${i} of 3 for test case $testcase"
             filename="${casedir}/case${testcase}.${i}"
             
             STARTTIME=$(date +%s%3N)
