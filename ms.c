@@ -155,7 +155,7 @@ int main(int argc, char *argv[]){
 
 	/* these next few lines are for reading in parameters from a file (for each sample) */
 	ntbs = 0 ;   
-	tbsparamstrs = (char **)malloc( argc*sizeof(char *) ) ;
+	tbsparamstrs = (char **) malloc( argc*sizeof(char *) ) ;
 
 	for(i = 0 ; i<argc ; i++) printf("%s ",argv[i]);
 	for(i = 0 ; i<argc ; i++) tbsparamstrs[i] = (char *)malloc(30*sizeof(char) ) ;
@@ -163,14 +163,15 @@ int main(int argc, char *argv[]){
 	
 	count=0;
 
-	if( ntbs > 0 )  for( k=0; k<ntbs; k++)  scanf(" %s", tbsparamstrs[k] );
+	if ( ntbs > 0 ) for ( k=0; k<ntbs; k++ ) scanf(" %s", tbsparamstrs[k] );
 	getpars( argc, argv, &howmany) ;   
+	
 	/* results are stored in global variable, pars */
 	
-	if( !pars.commandlineseedflag ) seedit( "s");	// Si no hay parametros, seteamos el seed en "s"
+	if ( !pars.commandlineseedflag ) seedit("s") ;	// Si no hay parametros, seteamos el seed en "s"
 	pf = stdout ;
 
-	if( pars.mp.segsitesin ==  0 ) {	// Tasa de mutación fija con -t theta
+	if ( pars.mp.segsitesin ==  0 ) {	// Tasa de mutación fija con -t theta
 	    list = cmatrix(pars.cp.nsam, maxsites+1) ;
         posit = (double *)malloc( (unsigned)( maxsites*sizeof( double)) ) ;		// posit y agevec son los metadatos de los segmentos como la 
         agevec = (double *)malloc( (unsigned)( maxsites*sizeof( double)) ) ;	// posición donde ocurrió la mutación (rango de 0 a 1) o la edad 
@@ -179,14 +180,14 @@ int main(int argc, char *argv[]){
 	    list = cmatrix(pars.cp.nsam, pars.mp.segsitesin+1 ) ;
         posit = (double *)malloc( (unsigned)( pars.mp.segsitesin*sizeof( double)) ) ;
         agevec = (double *)malloc( (unsigned)( pars.mp.segsitesin*sizeof( double)) ) ;
-	    if( pars.mp.theta > 0.0 ){
+	    if (pars.mp.theta > 0.0 ){
 			segfac = 1.0 ;
 		    for(i= pars.mp.segsitesin; i > 1; i--) 
 				segfac *= i ;
 		}
 	}
 
-    while( howmany-count++ ) {
+    while ( howmany-count++ ) {
 	   if( (ntbs > 0) && (count >1 ) ){
 			for( k=0; k<ntbs; k++){ 
 			    if( scanf(" %s", tbsparamstrs[k]) == EOF ){
@@ -194,7 +195,7 @@ int main(int argc, char *argv[]){
 				   exit(0);
 				}
 			}
-			getpars( argc, argv, &howmany) ;
+			getpars(argc, argv, &howmany) ;
 	   }
 	   
 		fprintf(pf,"\n//");
@@ -285,20 +286,20 @@ int gensam(char **list, double *pprobss, double *ptmrca, double *pttot) {
 	if (pars.mp.timeflag){
 		tt = 0.0 ;
 		for( seg=0, k=0; k<nsegs; seg=seglst[seg].next, k++) { 
-			if( mfreq > 1 ) ndes_setup( seglst[seg].ptree, nsam );
+			if ( mfreq > 1 ) ndes_setup( seglst[seg].ptree, nsam );
 			end = ( k<nsegs-1 ? seglst[seglst[seg].next].beg -1 : nsites-1 );
 			start = seglst[seg].beg ;
-			if( (nsegs==1) || ( ( start <= nsites/2) && ( end >= nsites/2 ) ) ) *ptmrca = (seglst[seg].ptree + 2*nsam-2) -> time ;
+			if ( (nsegs==1) || ( ( start <= nsites/2) && ( end >= nsites/2 ) ) ) *ptmrca = (seglst[seg].ptree + 2*nsam-2) -> time ;
 			len = end - start + 1 ;
 			tseg = len/(double)nsites ;
-			if( mfreq == 1 ) tt += ttime(seglst[seg].ptree,nsam)*tseg ;
+			if ( mfreq == 1 ) tt += ttime(seglst[seg].ptree,nsam)*tseg ;
 			else tt += ttimemf(seglst[seg].ptree,nsam, mfreq)*tseg ;
-			if( (segsitesin == 0) && ( theta == 0.0 )  ) free(seglst[seg].ptree) ;
+			if ( (segsitesin == 0) && ( theta == 0.0 )  ) free(seglst[seg].ptree) ;
 		}
 		*pttot = tt ;
 	}	
 	
-    if( (segsitesin == 0) && ( theta > 0.0)   ){	// Si se pasa theta sin segsites fijos
+    if ((segsitesin == 0) && (theta > 0.0)){	// Si se pasa theta sin segsites fijos
 		ns = 0 ;
 		for( seg=0, k=0; k<nsegs; seg=seglst[seg].next, k++) { 
 			if( mfreq > 1 ) ndes_setup( seglst[seg].ptree, nsam );

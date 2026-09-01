@@ -31,6 +31,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include "ms.h"
+
 #define NL putchar('\n')
 #define size_t unsigned
 
@@ -82,6 +83,21 @@ int isseg(int start, int c, int *psg);
 void pick2_chrom(int pop, int config[], int *pc1, int *pc2);
 int links(int c);
 
+
+/*
+*	@brief Es la función generadora de arboles coalescentes.
+*	
+*	Invoca a segtre_mig() que guarda en seglst el arbol de coalescencia. Luego en función de las opciones ingresadas, 
+*	muestra el arbol en formato Newick o muestra el tiempo que le tomó a cada rama hasta coalescer. Por último 
+*	aplica las mutaciones sobre las ramas de manera aleatoria con make_gametes().
+*
+*	@param[out]	list : Es la lista de segmentos de ADN de los individuos a completar
+*	@param[out]	pprobss : Es la probailidad de que bajo una tasa de mutación theeta se den n segsites fijos 
+*	@param[out]	ptmrca : El tiempo en llegar al most recent common ancester
+*	@param[out]	pttot : El tiempo total para la coalescencia del arbol
+*	@return	seglst : La lista de segmentos de ADN
+*
+*/
 struct segl *segtre_mig(struct c_params *cp, int *pnsegs) {
     int i, j, k, seg, dec, pop, pop2, c1, c2, ind, rchrom, intn, nsamin, numanc, num;
     int migrant, source_pop, *config, flagint;
@@ -94,16 +110,18 @@ struct segl *segtre_mig(struct c_params *cp, int *pnsegs) {
     double *size, *alphag, *tlast;
     struct devent *nextevent;
 
-    nsam = cp->nsam;
-    nsamin = cp->nsamin;        /* adna */
-    numanc = nsam - nsamin;     /* adna */
-    npop = cp->npop;
-    nsites = cp->nsites;
-    inconfig = cp->config;
-    r = cp->r;
-    f = cp->f;
-    track_len = cp->track_len;
+    nsam = cp->nsam;            // Número total de muestras
+    nsamin = cp->nsamin;        /* adna */  // Número de muestras en el presente cuando t = 0
+    numanc = nsam - nsamin;     /* adna */  // Número de muestras de ADN antiguo cuando t = x especificado por el usuario con -eA
+    npop = cp->npop;            // Número de subpoblaciones
+    nsites = cp->nsites;        // Número de sitios donde pueden ocurrir recombinación
+    inconfig = cp->config;      // Configuración de muestras por subpoblación
+    r = cp->r;                  // Tasa de recombinación
+    f = cp->f;                  // Una tasa
+    track_len = cp->track_len;  // Longitud promedio del track
+
     migm = (double **) malloc((unsigned) npop * sizeof(double *));
+
     for (i = 0; i < npop; i++) {
         migm[i] = (double *) malloc((unsigned) npop * sizeof(double));
         for (j = 0; j < npop; j++)
@@ -141,31 +159,29 @@ struct segl *segtre_mig(struct c_params *cp, int *pnsegs) {
     tlast = (double *) malloc((unsigned) ((npop) * sizeof(double)));
     if (alphag == NULL)
         perror("malloc error. segtre.");
+
     for (pop = 0; pop < npop; pop++) {
         config[pop] = inconfig[pop];
         size[pop] = (cp->size)[pop];
         alphag[pop] = (cp->alphag)[pop];
         tlast[pop] = 0.0;
     }
+
     for (pop = ind = 0; pop < npop; pop++)
         for (j = 0; j < inconfig[pop]; j++, ind++) {
-
             chrom[ind].nseg = 1;
             if (!(chrom[ind].pseg = (struct seg *) malloc((unsigned) sizeof(struct seg))))
                 ERROR("calloc error. se1");
-
             (chrom[ind].pseg)->beg = 0;
             (chrom[ind].pseg)->end = nsites - 1;
             (chrom[ind].pseg)->desc = ind;
             chrom[ind].pop = pop;
         }
+
     seglst[0].beg = 0;
-    if (!(seglst[0].ptree = (struct node *) calloc((unsigned) (2 * nsam), sizeof(struct node))))
-        perror("calloc error. se2");
-
-
-
+    if (!(seglst[0].ptree = (struct node *) calloc((unsigned) (2 * nsam), sizeof(struct node)))) perror("calloc error. se2");
     nnodes[0] = nsam - 1;
+    
     nchrom = nsamin;            /* adna */
     nlinks = ((long) (nsamin)) * (nsites - 1);  /* adna */
     nsegs = 1;
@@ -625,8 +641,7 @@ int xover(int nsam, int ic, int is) {
             seglst[nsegs].next = seglst[i].next;
             seglst[i].next = nsegs;
             seglst[nsegs].beg = begs;
-            if (!(seglst[nsegs].ptree = (struct node *) calloc((unsigned) (2 * nsam), sizeof(struct
-                                                                                             node))))
+            if (!(seglst[nsegs].ptree = (struct node *) calloc((unsigned) (2 * nsam), sizeof(struct node))))
                 perror("calloc error. re3.");
             nnodes[nsegs] = nnodes[i];
             ptree1 = seglst[i].ptree;
