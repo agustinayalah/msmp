@@ -140,8 +140,7 @@ void ranvec(int n, double pbuf[]);
 int poisso(double u);
 double gasdev(double m, double v);
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]){
     int i, k, howmany, segsites, afreq;
     char **list, **cmatrix(), **tbsparamstrs;
     FILE *pf, *fopen();
@@ -253,8 +252,7 @@ int main(int argc, char *argv[])
  *	@return	ns : La cantidad de sitios segregantes
  *
  */
-int gensam(char **list, double *pprobss, double *ptmrca, double *pttot)
-{
+int gensam(char **list, double *pprobss, double *ptmrca, double *pttot){
     int nsegs, h, i, k, j, seg, ns, start, end, len, segsit;
     struct segl *seglst;
     double nsinv, tseg, tt;
@@ -379,16 +377,14 @@ int gensam(char **list, double *pprobss, double *ptmrca, double *pttot)
     return (ns);
 }
 
-void ndes_setup(struct node *ptree, int nsam)
-{
+void ndes_setup(struct node *ptree, int nsam){
     int i;
     for (i = 0; i < nsam; i++) (ptree + i)->ndes = 1;
     for (i = nsam; i < 2 * nsam - 1; i++) (ptree + i)->ndes = 0;
     for (i = 0; i < 2 * nsam - 2; i++) (ptree + ((ptree + i)->abv))->ndes += (ptree + i)->ndes;
 }
 
-void biggerlist(int nsam, char **list)
-{
+void biggerlist(int nsam, char **list){
     int i;
     /*  fprintf(stderr,"maxsites: %d\n",maxsites);  */
     for (i = 0; i < nsam; i++) {
@@ -398,8 +394,7 @@ void biggerlist(int nsam, char **list)
 }
 
 /* allocates space for gametes (character strings) */
-char **cmatrix(int nsam, int len)
-{
+char **cmatrix(int nsam, int len){
     int i;
     char **m;
 
@@ -411,15 +406,13 @@ char **cmatrix(int nsam, int len)
     return (m);
 }
 
-void locate(int n, double beg, double len, double *ptr)
-{
+void locate(int n, double beg, double len, double *ptr){
     int i;
     ordran(n, ptr);
     for (i = 0; i < n; i++) ptr[i] = beg + ptr[i] * len;
 }
 
-void getpars(int argc, char *argv[], int *phowmany)
-{
+void getpars(int argc, char *argv[], int *phowmany){
     int arg, i, j, sum, pop, argstart, npop, npop2, pop2;
     double migr, mij, psize, palpha;
     struct devent *ptemp, *pt;
@@ -821,8 +814,7 @@ void getpars(int argc, char *argv[], int *phowmany)
     }
 }
 
-void argcheck(int arg, int argc, char *argv[])
-{
+void argcheck(int arg, int argc, char *argv[]){
     if ((arg >= argc) || (argv[arg][0] == '-')) {
 	fprintf(stderr, "not enough arguments after %s\n", argv[arg - 1]);
 	fprintf(stderr, "For usage type: ms<return>\n");
@@ -830,8 +822,7 @@ void argcheck(int arg, int argc, char *argv[])
     }
 }
 
-void usage()
-{
+void usage(){
     fprintf(stderr, "usage: ms nsam howmany \n");
     fprintf(stderr, "  Options: \n");
     fprintf(stderr, "\t -t theta   (this option and/or the next must be used. Theta = 4*N0*u )\n");
@@ -888,8 +879,7 @@ void usage()
     exit(1);
 }
 
-void addtoelist(struct devent *pt, struct devent *elist)
-{
+void addtoelist(struct devent *pt, struct devent *elist){
     struct devent *plast, *pevent, *ptemp;
 
     pevent = elist;
@@ -902,8 +892,7 @@ void addtoelist(struct devent *pt, struct devent *elist)
     pt->nextde = ptemp;
 }
 
-void free_eventlist(struct devent *pt, int npop)
-{
+void free_eventlist(struct devent *pt, int npop){
     struct devent *next;
     int pop;
 
@@ -927,8 +916,7 @@ void free_eventlist(struct devent *pt, int npop)
 #define STATE2 '0'
 
 void make_gametes(int nsam, int mfreq, struct node *ptree, double tt, int newsites, int ns,
-		  char **list)
-{
+		  char **list){
     int tip, j, node;
     for (j = ns; j < ns + newsites; j++) {
 	if (mfreq == 1)
@@ -947,8 +935,7 @@ void make_gametes(int nsam, int mfreq, struct node *ptree, double tt, int newsit
 
 /***  ttime.c : Returns the total time in the tree, *ptree, with nsam tips. **/
 
-double ttime(struct node *ptree, int nsam)
-{
+double ttime(struct node *ptree, int nsam){
     double t;
     int i;
     t = (ptree + 2 * nsam - 2)->time;
@@ -959,8 +946,7 @@ double ttime(struct node *ptree, int nsam)
     return (t);
 }
 
-double ttimemf(struct node *ptree, int nsam, int mfreq)
-{
+double ttimemf(struct node *ptree, int nsam, int mfreq){
     double t;
     int i;
 
@@ -974,8 +960,7 @@ double ttimemf(struct node *ptree, int nsam, int mfreq)
     return (t);
 }
 
-void prtree(struct node *ptree, int nsam)
-{
+void prtree(struct node *ptree, int nsam){
     double t;
     int i, *descl, *descr;
 
@@ -999,8 +984,7 @@ void prtree(struct node *ptree, int nsam)
 }
 
 // Función para imprimir los arboles en formato de Newick
-void parens(struct node *ptree, int *descl, int *descr, int noden)
-{
+void parens(struct node *ptree, int *descl, int *descr, int noden){
     double time;
 
     if (descl[noden] == -1) {
@@ -1024,8 +1008,7 @@ void parens(struct node *ptree, int *descl, int *descr, int noden)
 	      a particular branch is proportional to its duration. tt is total
 	      time in tree.   ****/
 
-int pickb(int nsam, struct node *ptree, double tt)
-{
+int pickb(int nsam, struct node *ptree, double tt){
     double x, y;
     int i;
 
@@ -1073,8 +1056,7 @@ int pickbmf(int nsam, int mfreq, struct node *ptree, double tt)
 
 /****  tdesn : returns 1 if tip is a descendant of node in *ptree, otherwise 0. **/
 
-int tdesn(struct node *ptree, int tip, int node)
-{
+int tdesn(struct node *ptree, int tip, int node){
     int k;
 
     for (k = tip; k < node; k = (ptree + k)->abv);
@@ -1088,8 +1070,7 @@ int tdesn(struct node *ptree, int tip, int node)
 
 /* pick2()  */
 
-int pick2(int n, int *i, int *j)
-{
+int pick2(int n, int *i, int *j){
     *i = n * ran1();
     while ((*j = n * ran1()) == *i);
 
@@ -1098,15 +1079,13 @@ int pick2(int n, int *i, int *j)
 
 /**** ordran.c  ***/
 
-void ordran(int n, double pbuf[])
-{
+void ordran(int n, double pbuf[]){
     ranvec(n, pbuf);
     order(n, pbuf);
     return;
 }
 
-void mnmial(int n, int nclass, double p[], int rv[])
-{
+void mnmial(int n, int nclass, double p[], int rv[]){
     double x, s;
     int i, j;
 
@@ -1123,8 +1102,7 @@ void mnmial(int n, int nclass, double p[], int rv[])
     return;
 }
 
-void order(int n, double pbuf[])
-{
+void order(int n, double pbuf[]){
     int gap, i, j;
     double temp;
 
@@ -1138,8 +1116,7 @@ void order(int n, double pbuf[])
     return;
 }
 
-void ranvec(int n, double pbuf[])
-{
+void ranvec(int n, double pbuf[]){
     int i;
 
     for (i = 0; i < n; i++) {
@@ -1149,8 +1126,7 @@ void ranvec(int n, double pbuf[])
     return;
 }
 
-int poisso(double u)
-{
+int poisso(double u){
     double cump, ru, p;
     int i = 1;
 
@@ -1175,8 +1151,7 @@ int poisso(double u)
 
 /* a slight modification of crecipes version */
 
-double gasdev(double m, double v)
-{
+double gasdev(double m, double v){
     static int iset = 0;
     static float gset;
     float fac, r, v1, v2;
