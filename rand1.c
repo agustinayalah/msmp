@@ -15,8 +15,8 @@ double ran1()
 
 void seedit(char *flag)
 {
-    FILE *fopen(), *pfseed;
-    unsigned short seedv[3], seedv2[3], *seed48(), *pseed;
+    FILE *pfseed;
+    unsigned short seedv[3], seedv2[3], *pseed;
     int i;
 
     if (flag[0] == 's') {
@@ -47,7 +47,7 @@ void seedit(char *flag)
 
 int commandlineseed(char **seeds)
 {
-    unsigned short seedv[3], *seed48();
+    unsigned short seedv[3];
 
     seedv[0] = atoi(seeds[0]);
     seedv[1] = atoi(seeds[1]);

@@ -15,7 +15,7 @@ double ran1()
 
 void seedit(const char *flag)
 {
-    FILE *fopen(), *pfseed;
+    FILE *pfseed;
     unsigned int seed2;
 
     if (flag[0] == 's') {

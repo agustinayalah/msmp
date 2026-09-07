@@ -18,8 +18,8 @@ double ran1()
 
 void seedit(char *flag)
 {
-    FILE *fopen(), *pfseed;
-    unsigned short seedv[3], seedv2[3], *seed48(), *pseed, tempseed;
+    FILE *pfseed;
+    unsigned short seedv[3], seedv2[3], *pseed, tempseed;
     int i;
 
     if (flag[0] == 's') {

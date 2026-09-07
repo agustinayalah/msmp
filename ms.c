@@ -143,8 +143,8 @@ double gasdev(double m, double v);
 int main(int argc, char *argv[])
 {
     int i, k, howmany, segsites, afreq;
-    char **list, **cmatrix(), **tbsparamstrs;
-    FILE *pf, *fopen();
+    char **list, **tbsparamstrs;
+    FILE *pf;
     double probss, tmrca, ttot;
 
     /* these next few lines are for reading in parameters from a file (for each sample) */
