@@ -266,7 +266,7 @@ int main(int argc, char *argv[])
  */
 int gensam(char **list, double *pprobss, double *ptmrca, double *pttot)
 {
-    int nsegs, h, i, k, j, seg, ns, start, end, len, segsit;
+    int nsegs, i, k, j, seg, ns, start, end, len, segsit;
     struct segl *seglst;
     double nsinv, tseg, tt;
     double *pk;

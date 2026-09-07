@@ -100,13 +100,13 @@ int links(int c);
  */
 struct segl *segtre_mig(struct c_params *cp, int *pnsegs)
 {
-    int i, j, k, seg, dec, pop, pop2, c1, c2, ind, rchrom, intn, nsamin, numanc, num;
-    int migrant, source_pop, *config, flagint;
+    int i, j, k, seg, dec, pop, pop2, c1, c2, ind, rchrom, nsamin, numanc, num;
+    int migrant, source_pop, *config;
     double sum, x, tcoal, ttemp, rft, clefta, tmin, p;
     double prec, cin, prect, nnm1, nnm0, mig, ran, coal_prob, prob, rdum, arg;
     char c, event;
     int eflag, cpop, ic;
-    int nsam, npop, nsites, nintn, *inconfig;
+    int nsam, npop, nsites, *inconfig;
     double r, f, rf, track_len, *nrec, *npast, *tpast, **migm;
     double *size, *alphag, *tlast;
     struct devent *nextevent;
@@ -201,7 +201,6 @@ struct segl *segtre_mig(struct c_params *cp, int *pnsegs)
     else
         rf = f / (nsites - 1);
     rft = rf * track_len;
-    flagint = 0;
 
     /* Main loop */
 
@@ -488,7 +487,7 @@ struct segl *segtre_mig(struct c_params *cp, int *pnsegs)
 int re(int nsam)
 {
     struct seg *pseg;
-    int el, lsg, lsgm1, ic, is, in;
+    int el, lsg, lsgm1, ic, is;
     long spot;
 
     /* First generate a random x-over spot, then locate it as to chrom and seg. */
@@ -514,11 +513,10 @@ int re(int nsam)
 int cleftr(int nsam)
 {
     struct seg *pseg;
-    int lsg, lsgm1, ic, is, in, spot;
+    int ic, is;
     double x, sum, len;
 
-    while ((x = cleft * ran1()) == 0.0)
-        ;
+    while ((x = cleft * ran1()) == 0.0) ;
     sum = 0.0;
     ic = -1;
     while (sum < x) {
@@ -534,7 +532,7 @@ int cleftr(int nsam)
 int cinr(int nsam, int nsites)
 {
     struct seg *pseg;
-    int len, el, lsg, lsgm1, ic, is, in, spot, endic;
+    int len, el, lsg, lsgm1, ic, is, spot, endic;
 
     /* First generate a random x-over spot, then locate it as to chrom and seg. */
 
@@ -570,7 +568,7 @@ int cinr(int nsam, int nsites)
 int xover(int nsam, int ic, int is)
 {
     struct seg *pseg, *pseg2;
-    int i, lsg, lsgm1, newsg, jseg, k, in, spot;
+    int i, lsg, lsgm1, newsg, jseg, k, in;
     double len;
 
     pseg = chrom[ic].pseg;
