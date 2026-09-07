@@ -102,12 +102,12 @@ struct segl *segtre_mig(struct c_params *cp, int *pnsegs)
 {
     int i, j, k, seg, dec, pop, pop2, c1, c2, ind, rchrom, nsamin, numanc, num;
     int migrant, source_pop, *config;
-    double sum, x, tcoal, ttemp, rft, clefta, tmin, p;
-    double prec, cin, prect, nnm1, nnm0, mig, ran, coal_prob, prob, rdum, arg;
-    char c, event;
+    double sum, x, ttemp, rft, clefta, tmin, p;
+    double prec, cin, prect, mig, ran, coal_prob, rdum, arg;
+    char event;
     int eflag, cpop, ic;
     int nsam, npop, nsites, *inconfig;
-    double r, f, rf, track_len, *nrec, *npast, *tpast, **migm;
+    double r, f, rf, track_len, **migm;
     double *size, *alphag, *tlast;
     struct devent *nextevent;
 

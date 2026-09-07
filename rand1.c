@@ -3,17 +3,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-double ran1();
-void seedit(char *flag);
+double ran1(void);
+void seedit(const char *flag);
 int commandlineseed(char **seeds);
 
 double ran1()
 {
-    double drand48();
     return (drand48());
 }
 
-void seedit(char *flag)
+void seedit(const char *flag)
 {
     FILE *pfseed;
     unsigned short seedv[3], seedv2[3], *pseed;

@@ -120,7 +120,7 @@ void locate(int n, double beg, double len, double *ptr);
 
 void getpars(int argc, char *argv[], int *phowmany);
 void argcheck(int arg, int argc, char *argv[]);
-void usage();
+void usage(void);
 void addtoelist(struct devent *pt, struct devent *elist);
 void free_eventlist(struct devent *pt, int npop);
 void make_gametes(int nsam, int mfreq, struct node *ptree, double tt, int newsites, int ns,
@@ -266,7 +266,7 @@ int main(int argc, char *argv[])
  */
 int gensam(char **list, double *pprobss, double *ptmrca, double *pttot)
 {
-    int nsegs, i, k, j, seg, ns, start, end, len, segsit;
+    int nsegs, i, k, seg, ns, start, end, len, segsit;
     struct segl *seglst;
     double nsinv, tseg, tt;
     double *pk;
@@ -1002,7 +1002,6 @@ double ttimemf(struct node *ptree, int nsam, int mfreq)
 
 void prtree(struct node *ptree, int nsam)
 {
-    double t;
     int i, *descl, *descr;
 
     descl = (int *)malloc((unsigned)(2 * nsam - 1) * sizeof(int));

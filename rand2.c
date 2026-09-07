@@ -9,7 +9,6 @@ int commandlineseed(char **seeds);
 
 double ran1()
 {
-    int rand();
     return (rand() / (RAND_MAX + 1.0));
 }
 

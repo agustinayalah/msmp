@@ -12,7 +12,6 @@ int commandlineseed(char **seeds);
 
 double ran1()
 {
-    double drand48();
     return (drand48());
 }
 
