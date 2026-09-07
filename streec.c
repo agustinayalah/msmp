@@ -41,8 +41,6 @@
 
 #define SEGINC 80
 
-extern int flag;
-
 int nchrom, begs, nsegs;
 long nlinks;
 static int *nnodes = NULL;

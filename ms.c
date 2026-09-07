@@ -945,7 +945,7 @@ void parens( struct node *ptree, int *descl, int *descr,  int noden){
 	      time in tree.   ****/
 
 int pickb(int nsam, struct node *ptree, double tt){
-	double x, y, ran1();
+	double x, y ;
 	int i;
 
 	x = ran1()*tt;
@@ -965,7 +965,7 @@ int pickb(int nsam, struct node *ptree, double tt){
 }
 
 int pickbmf(int nsam, int mfreq, struct node *ptree, double tt){
-	double x, y, ran1();
+	double x, y ;
 	int i, lastbranch = 0 ;
 
 	x = ran1()*tt;
@@ -1005,7 +1005,6 @@ int tdesn(struct node *ptree, int tip, int node){
 /* pick2()  */
 
 int pick2(int n, int *i, int *j){
-	double ran1();
 
 	*i = n * ran1() ;
 	while( ( *j = n * ran1() ) == *i );
@@ -1022,7 +1021,6 @@ void ordran(int n,double pbuf[]){
 }
 
 void mnmial(int n, int nclass, double p[], int rv[]){
-	double ran1();
 	double x, s;
 	int i, j;
 
@@ -1055,7 +1053,6 @@ void order(int n,double pbuf[]){
 
 void ranvec(int n,double pbuf[]){
 	int i;
-	double ran1();
 
 	for(i=0; i<n; i++){
 		pbuf[i] = ran1();
@@ -1065,7 +1062,7 @@ void ranvec(int n,double pbuf[]){
 }
 
 int poisso(double u){
-	double  cump, ru, ran1(), p ;
+	double  cump, ru, p ;
 	int i=1;
 
 	if( u > 30. ){
@@ -1091,7 +1088,6 @@ double gasdev(double m, double v){
 	static int iset=0;
 	static float gset;
 	float fac,r,v1,v2;
-	double ran1();
 
 	if (iset == 0) {
 		do {
