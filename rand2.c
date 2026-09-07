@@ -7,33 +7,36 @@ double ran1();
 void seedit(const char *flag);
 int commandlineseed(char **seeds);
 
-double ran1() {
+double ran1()
+{
     int rand();
     return (rand() / (RAND_MAX + 1.0));
 }
 
-void seedit(const char *flag) {
+void seedit(const char *flag)
+{
     FILE *fopen(), *pfseed;
     unsigned int seed2;
 
     if (flag[0] == 's') {
-	pfseed = fopen("seedms", "r");
-	if (pfseed == NULL) {
-	    seed2 = 59243;
-	} else {
-	    fscanf(pfseed, " %d", &seed2);
-	    fclose(pfseed);
-	}
-	srand(seed2);
+        pfseed = fopen("seedms", "r");
+        if (pfseed == NULL) {
+            seed2 = 59243;
+        } else {
+            fscanf(pfseed, " %d", &seed2);
+            fclose(pfseed);
+        }
+        srand(seed2);
 
-	printf("\n%d\n", seed2);
+        printf("\n%d\n", seed2);
     } else {
-	pfseed = fopen("seedms", "w");
-	fprintf(pfseed, "%d \n", rand());
+        pfseed = fopen("seedms", "w");
+        fprintf(pfseed, "%d \n", rand());
     }
 }
 
-int commandlineseed(char **seeds) {
+int commandlineseed(char **seeds)
+{
     unsigned int seed2;
     void srand(unsigned int seed);
 

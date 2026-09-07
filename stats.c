@@ -11,7 +11,8 @@ estimates of the  0.5, 0.5 and 0.95th quantile.
 
 int order(int, double *);
 
-main(int argc, char *argv[]) {
+main(int argc, char *argv[])
+{
     double *vec, x, s, *percentiles;
     int c, vecl = 1000;
     int i, index;
@@ -21,20 +22,20 @@ main(int argc, char *argv[]) {
     vec = (double *)malloc((unsigned)vecl * sizeof(double));
 
     for (i = 1; i < argc; i++) {
-	percentiles[i] = atof(argv[i]);
+        percentiles[i] = atof(argv[i]);
     }
 
     c = 0;
     x = s = 0.0;
 
     while (scanf(" %lf", vec + c) != EOF) {
-	x += vec[c];
-	s += vec[c] * vec[c];
-	c++;
-	if (c >= vecl) {
-	    vecl += 1000;
-	    vec = (double *)realloc(vec, (unsigned)vecl * sizeof(double));
-	}
+        x += vec[c];
+        s += vec[c] * vec[c];
+        c++;
+        if (c >= vecl) {
+            vecl += 1000;
+            vec = (double *)realloc(vec, (unsigned)vecl * sizeof(double));
+        }
     }
 
     order(c, vec);
@@ -45,29 +46,30 @@ main(int argc, char *argv[]) {
     printf("%lf\tsd:\t%lf\tn:\t%d", x, s, c);
 
     for (i = 1; i < argc; i++) {
-	index = percentiles[i] * c + 0.5;
-	p = vec[index - 1] * (index + 0.5 - percentiles[i] * c) +
-	    vec[index] * (percentiles[i] * c + 0.5 - index);
-	printf("\t%5.3lf", percentiles[i]);
-	if (index < 1) {
-	    printf("\t-");
-	} else {
-	    printf("\t%lf", p);
-	}
+        index = percentiles[i] * c + 0.5;
+        p = vec[index - 1] * (index + 0.5 - percentiles[i] * c) +
+            vec[index] * (percentiles[i] * c + 0.5 - index);
+        printf("\t%5.3lf", percentiles[i]);
+        if (index < 1) {
+            printf("\t-");
+        } else {
+            printf("\t%lf", p);
+        }
     }
 
     printf("\n");
 }
 
-int order(int n, double *pbuf) {
+int order(int n, double *pbuf)
+{
     int gap, i, j;
     double temp;
 
     for (gap = n / 2; gap > 0; gap /= 2)
-	for (i = gap; i < n; i++)
-	    for (j = i - gap; j >= 0 && pbuf[j] > pbuf[j + gap]; j -= gap) {
-		temp = pbuf[j];
-		pbuf[j] = pbuf[j + gap];
-		pbuf[j + gap] = temp;
-	    }
+        for (i = gap; i < n; i++)
+            for (j = i - gap; j >= 0 && pbuf[j] > pbuf[j + gap]; j -= gap) {
+                temp = pbuf[j];
+                pbuf[j] = pbuf[j + gap];
+                pbuf[j + gap] = temp;
+            }
 }

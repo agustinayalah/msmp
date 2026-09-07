@@ -14,7 +14,8 @@ double ran1();
 char **cmatrix(int nsam, int len);
 int biggerlist(int nsam, unsigned nmax, char **list);
 
-main(int argc, char *argv[]) {
+main(int argc, char *argv[])
+{
     int nsam, j, nsites, i, howmany;
     char **list, **cmatrix(), allele, na, line[1001];
     FILE *pf, *fopen(), *pfin;
@@ -31,7 +32,7 @@ main(int argc, char *argv[]) {
     fgets(line, 1000, pfin);
 
     if (argc > 1) {
-	nadv = atoi(argv[1]);
+        nadv = atoi(argv[1]);
     }
 
     list = cmatrix(nsam, maxsites + 1);
@@ -41,66 +42,76 @@ main(int argc, char *argv[]) {
     count = 0;
     probflag = 0;
     while (howmany - count++) {
-	/* read in a sample */
-	do {
-	    if (fgets(line, 1000, pfin) == NULL) exit(0);
-	} while (line[0] != '/');
+        /* read in a sample */
+        do {
+            if (fgets(line, 1000, pfin) == NULL)
+                exit(0);
+        } while (line[0] != '/');
 
-	fscanf(pfin, "  segsites: %d", &segsites);
-	if (segsites >= maxsites) {
-	    maxsites = segsites + 10;
-	    posit = (double *)realloc(posit, maxsites * sizeof(double));
-	    biggerlist(nsam, maxsites, list);
-	}
-	if (segsites > 0) {
-	    fscanf(pfin, " %s", astr);
-	    if (astr[1] == 'r') {
-		fscanf(pfin, " %lf", &prob);
-		probflag = 1;
-		fscanf(pfin, " %*s");
-	    }
-	    for (i = 0; i < segsites; i++) fscanf(pfin, " %lf", posit + i);
-	    for (i = 0; i < nsam; i++) fscanf(pfin, " %s", list[i]);
-	}
-	/* analyse sample ( do stuff with segsites and list) */
-	for (ind = 0; ind < nsam; ind++) nrepeats[ind] = 0;
+        fscanf(pfin, "  segsites: %d", &segsites);
+        if (segsites >= maxsites) {
+            maxsites = segsites + 10;
+            posit = (double *)realloc(posit, maxsites * sizeof(double));
+            biggerlist(nsam, maxsites, list);
+        }
+        if (segsites > 0) {
+            fscanf(pfin, " %s", astr);
+            if (astr[1] == 'r') {
+                fscanf(pfin, " %lf", &prob);
+                probflag = 1;
+                fscanf(pfin, " %*s");
+            }
+            for (i = 0; i < segsites; i++)
+                fscanf(pfin, " %lf", posit + i);
+            for (i = 0; i < nsam; i++)
+                fscanf(pfin, " %s", list[i]);
+        }
+        /* analyse sample ( do stuff with segsites and list) */
+        for (ind = 0; ind < nsam; ind++)
+            nrepeats[ind] = 0;
 
-	for (i = 0; i < segsites; i++) {
-	    if (ran1() < .5) {
-		step = -1;
-	    } else {
-		step = 1;
-	    }
-	    for (ind = 0; ind < nsam; ind++)
-		if (list[ind][i] == '1') nrepeats[ind] += step;
-	}
+        for (i = 0; i < segsites; i++) {
+            if (ran1() < .5) {
+                step = -1;
+            } else {
+                step = 1;
+            }
+            for (ind = 0; ind < nsam; ind++)
+                if (list[ind][i] == '1')
+                    nrepeats[ind] += step;
+        }
 
-	for (ind = 0; ind < nsam - 1; ind++) printf("%d\t", nrepeats[ind]);
+        for (ind = 0; ind < nsam - 1; ind++)
+            printf("%d\t", nrepeats[ind]);
 
-	printf("%d", nrepeats[nsam - 1]);
-	printf("\t%s", line + 2);
+        printf("%d", nrepeats[nsam - 1]);
+        printf("\t%s", line + 2);
     }
 }
 
 /* allocates space for gametes (character strings) */
-char **cmatrix(int nsam, int len) {
+char **cmatrix(int nsam, int len)
+{
     int i;
     char **m;
 
-    if (!(m = (char **)malloc((unsigned)(nsam * sizeof(char *))))) perror("alloc error in cmatrix");
+    if (!(m = (char **)malloc((unsigned)(nsam * sizeof(char *)))))
+        perror("alloc error in cmatrix");
     for (i = 0; i < nsam; i++) {
-	if (!(m[i] = (char *)malloc((unsigned)(len * sizeof(char)))))
-	    perror("alloc error in cmatric. 2");
+        if (!(m[i] = (char *)malloc((unsigned)(len * sizeof(char)))))
+            perror("alloc error in cmatric. 2");
     }
 
     return (m);
 }
 
-int biggerlist(int nsam, unsigned nmax, char **list) {
+int biggerlist(int nsam, unsigned nmax, char **list)
+{
     int i;
     maxsites = nmax;
     for (i = 0; i < nsam; i++) {
-	list[i] = (char *)realloc(list[i], maxsites * sizeof(char));
-	if (list[i] == NULL) perror("realloc error. bigger");
+        list[i] = (char *)realloc(list[i], maxsites * sizeof(char));
+        if (list[i] == NULL)
+            perror("realloc error. bigger");
     }
 }

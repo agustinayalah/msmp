@@ -9,9 +9,9 @@ struct devent {
     struct devent *nextde;
 };
 
-struct c_params {  // Parámetros de coalescencia
+struct c_params { // Parámetros de coalescencia
     int npop;
-    int nsam;	/* total sample size including ancient samples */
+    int nsam;   /* total sample size including ancient samples */
     int nsamin; /*  sample size at present time,  does not include ancient samples */
     int *config;
     double **mig_mat;
@@ -24,9 +24,9 @@ struct c_params {  // Parámetros de coalescencia
     struct devent *deventlist;
 };
 
-struct m_params {  // Parámetros de mutación
+struct m_params { // Parámetros de mutación
     double theta;
-    int segsitesin;  // Para fijar cantidad de segsites
+    int segsitesin; // Para fijar cantidad de segsites
     int treeflag;
     int timeflag;
     int mfreq;
