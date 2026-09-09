@@ -86,13 +86,12 @@ int links(int c);
  *	@brief Es la función generadora de arboles coalescentes.
  *
  *	Invoca a segtre_mig() que guarda en seglst el arbol de coalescencia. Luego en función de las
- *opciones ingresadas, muestra el arbol en formato Newick o muestra el tiempo que le tomó a cada
- *rama hasta coalescer. Por último aplica las mutaciones sobre las ramas de manera aleatoria con
- *make_gametes().
+ *  opciones ingresadas, muestra el arbol en formato Newick o muestra el tiempo que le tomó a cada
+ *  rama hasta coalescer. Por último aplica las mutaciones sobre las ramas de manera aleatoria con
+ *  make_gametes().
  *
  *	@param[out]	list : Es la lista de segmentos de ADN de los individuos a completar
- *	@param[out]	pprobss : Es la probailidad de que bajo una tasa de mutación theeta se den n
- *segsites fijos
+ *	@param[out]	pprobss : Es la probailidad de que bajo una tasa de mutación theeta se den n segsites fijos
  *	@param[out]	ptmrca : El tiempo en llegar al most recent common ancester
  *	@param[out]	pttot : El tiempo total para la coalescencia del arbol
  *	@return	seglst : La lista de segmentos de ADN
@@ -107,7 +106,7 @@ struct segl *segtre_mig(struct c_params *cp, int *pnsegs)
     char event;
     int eflag, cpop, ic;
     int nsam, npop, nsites, *inconfig;
-    double r, f, rf, track_len, **migm;
+    double r, f, rf, track_len, **migration_matrix;
     double *size, *alphag, *tlast;
     struct devent *nextevent;
 
@@ -119,15 +118,15 @@ struct segl *segtre_mig(struct c_params *cp, int *pnsegs)
     nsites = cp->nsites;               // Número de sitios donde pueden ocurrir recombinación
     inconfig = cp->config;             // Configuración de muestras por subpoblación
     r = cp->r;                         // Tasa de recombinación
-    f = cp->f;                         // Una tasa
+    f = cp->f;                         // Otra tasa
     track_len = cp->track_len;         // Longitud promedio del track
 
-    migm = (double **)malloc((unsigned)npop * sizeof(double *));
+    migration_matrix = (double **)malloc((unsigned)npop * sizeof(double *));
 
     for (i = 0; i < npop; i++) {
-        migm[i] = (double *)malloc((unsigned)npop * sizeof(double));
+        migration_matrix[i] = (double *)malloc((unsigned)npop * sizeof(double));
         for (j = 0; j < npop; j++)
-            migm[i][j] = (cp->mig_mat)[i][j];
+            migration_matrix[i][j] = (cp->mig_mat)[i][j];
     }
     nextevent = cp->deventlist;
 
@@ -169,7 +168,7 @@ struct segl *segtre_mig(struct c_params *cp, int *pnsegs)
         tlast[pop] = 0.0;
     }
 
-    for (pop = ind = 0; pop < npop; pop++)
+    for (pop = ind = 0; pop < npop; pop++)          // Itera por población y en cada población, por individuo
         for (j = 0; j < inconfig[pop]; j++, ind++) {
             chrom[ind].nseg = 1;
             if (!(chrom[ind].pseg = (struct seg *)malloc((unsigned)sizeof(struct seg))))
@@ -210,8 +209,9 @@ struct segl *segtre_mig(struct c_params *cp, int *pnsegs)
         clefta = cleft * rft;
         prect = prec + cin + clefta;
         mig = 0.0; // Migración
+
         for (i = 0; i < npop; i++)
-            mig += config[i] * migm[i][i];
+            mig += config[i] * migration_matrix[i][i];
         if ((npop > 1) && (mig == 0.0) && (nextevent == NULL)) {
             i = 0;
             for (j = 0; j < npop; j++)
@@ -225,8 +225,7 @@ struct segl *segtre_mig(struct c_params *cp, int *pnsegs)
         eflag = 0;
 
         if (prect > 0.0) { /* cross-over or gene conversion */
-            while ((rdum = ran1()) == 0.0)
-                ;
+            while ((rdum = ran1()) == 0.0) ;
             ttemp = -log(rdum) / prect;
             if ((eflag == 0) || (ttemp < tmin)) {
                 tmin = ttemp;
@@ -235,8 +234,7 @@ struct segl *segtre_mig(struct c_params *cp, int *pnsegs)
             }
         }
         if (mig > 0.0) { /* migration   */
-            while ((rdum = ran1()) == 0.0)
-                ;
+            while ((rdum = ran1()) == 0.0) ;
             ttemp = -log(rdum) / mig;
             if ((eflag == 0) || (ttemp < tmin)) {
                 tmin = ttemp;
@@ -248,8 +246,7 @@ struct segl *segtre_mig(struct c_params *cp, int *pnsegs)
         for (pop = 0; pop < npop; pop++) { /* coalescent */
             coal_prob = ((double)config[pop]) * (config[pop] - 1.);
             if (coal_prob > 0.0) {
-                while ((rdum = ran1()) == .0)
-                    ;
+                while ((rdum = ran1()) == .0) ;
                 if (alphag[pop] == 0) {
                     ttemp = -log(rdum) * size[pop] / coal_prob;
                     if ((eflag == 0) || (ttemp < tmin)) {
@@ -259,8 +256,7 @@ struct segl *segtre_mig(struct c_params *cp, int *pnsegs)
                         cpop = pop;
                     }
                 } else {
-                    arg = 1. - alphag[pop] * size[pop] * exp(-alphag[pop] * (t - tlast[pop])) *
-                                   log(rdum) / coal_prob;
+                    arg = 1. - alphag[pop] * size[pop] * exp(-alphag[pop] * (t - tlast[pop])) * log(rdum) / coal_prob;
                     if (arg > 0.0) { /*if arg <= 0,  no coalescent within interval */
                         ttemp = log(arg) / alphag[pop];
                         if ((eflag == 0) || (ttemp < tmin)) {
@@ -314,22 +310,22 @@ struct segl *segtre_mig(struct c_params *cp, int *pnsegs)
             case 'M':
                 for (pop = 0; pop < npop; pop++)
                     for (pop2 = 0; pop2 < npop; pop2++)
-                        migm[pop][pop2] = (nextevent->paramv) / (npop - 1.0);
+                        migration_matrix[pop][pop2] = (nextevent->paramv) / (npop - 1.0);
                 for (pop = 0; pop < npop; pop++)
-                    migm[pop][pop] = nextevent->paramv;
+                    migration_matrix[pop][pop] = nextevent->paramv;
                 nextevent = nextevent->nextde;
                 break;
             case 'a':
                 for (pop = 0; pop < npop; pop++)
                     for (pop2 = 0; pop2 < npop; pop2++)
-                        migm[pop][pop2] = (nextevent->mat)[pop][pop2];
+                        migration_matrix[pop][pop2] = (nextevent->mat)[pop][pop2];
                 nextevent = nextevent->nextde;
                 break;
             case 'm':
                 i = nextevent->popi;
                 j = nextevent->popj;
-                migm[i][i] += nextevent->paramv - migm[i][j];
-                migm[i][j] = nextevent->paramv;
+                migration_matrix[i][i] += nextevent->paramv - migration_matrix[i][j];
+                migration_matrix[i][j] = nextevent->paramv;
                 nextevent = nextevent->nextde;
                 break;
             case 'j': /* merge pop i into pop j  (join) */
@@ -343,8 +339,8 @@ struct segl *segtre_mig(struct c_params *cp, int *pnsegs)
                 /*  the following was added 19 May 2007 */
                 for (k = 0; k < npop; k++) {
                     if (k != i) {
-                        migm[k][k] -= migm[k][i];
-                        migm[k][i] = 0.;
+                        migration_matrix[k][k] -= migration_matrix[k][i];
+                        migration_matrix[k][i] = 0.;
                     }
                 }
                 /* end addition */
@@ -393,12 +389,12 @@ struct segl *segtre_mig(struct c_params *cp, int *pnsegs)
                 tlast[npop - 1] = t;
                 size[npop - 1] = 1.0;
                 alphag[npop - 1] = 0.0;
-                migm = (double **)realloc(migm, (unsigned)(npop * sizeof(double *)));
+                migration_matrix = (double **)realloc(migration_matrix, (unsigned)(npop * sizeof(double *)));
                 for (j = 0; j < npop - 1; j++)
-                    migm[j] = (double *)realloc(migm[j], (unsigned)(npop * sizeof(double)));
-                migm[npop - 1] = (double *)malloc((unsigned)(npop * sizeof(double)));
+                    migration_matrix[j] = (double *)realloc(migration_matrix[j], (unsigned)(npop * sizeof(double)));
+                migration_matrix[npop - 1] = (double *)malloc((unsigned)(npop * sizeof(double)));
                 for (j = 0; j < npop; j++)
-                    migm[npop - 1][j] = migm[j][npop - 1] = 0.0;
+                    migration_matrix[npop - 1][j] = migration_matrix[j][npop - 1] = 0.0;
                 config[npop - 1] = 0;
                 config[i] = 0;
                 for (ic = 0; ic < nchrom; ic++) {
@@ -432,16 +428,16 @@ struct segl *segtre_mig(struct c_params *cp, int *pnsegs)
                 x = mig * ran1();
                 sum = 0.0;
                 for (i = 0; i < nchrom; i++) {
-                    sum += migm[chrom[i].pop][chrom[i].pop];
+                    sum += migration_matrix[chrom[i].pop][chrom[i].pop];
                     if (x < sum)
                         break;
                 }
                 migrant = i;
-                x = ran1() * migm[chrom[i].pop][chrom[i].pop];
+                x = ran1() * migration_matrix[chrom[i].pop][chrom[i].pop];
                 sum = 0.0;
                 for (i = 0; i < npop; i++) {
                     if (i != chrom[migrant].pop) {
-                        sum += migm[chrom[migrant].pop][i];
+                        sum += migration_matrix[chrom[migrant].pop][i];
                         if (x < sum)
                             break;
                     }
@@ -474,8 +470,8 @@ struct segl *segtre_mig(struct c_params *cp, int *pnsegs)
     free(alphag);
     free(tlast);
     for (i = 0; i < npop; i++)
-        free(migm[i]);
-    free(migm);
+        free(migration_matrix[i]);
+    free(migration_matrix);
     return (seglst);
 }
 

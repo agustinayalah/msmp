@@ -164,22 +164,19 @@ int main(int argc, char *argv[])
     if (ntbs > 0)
         for (k = 0; k < ntbs; k++)
             scanf(" %s", tbsparamstrs[k]);
+
     getpars(argc, argv, &howmany);
 
     /* results are stored in global variable, pars */
 
     if (!pars.commandlineseedflag)
-        seedit("s"); // Si no hay parametros, seteamos el seed en "s"
+        seedit("s");                                // Si no hay parametros, seteamos el seed en "s"
     pf = stdout;
 
-    if (pars.mp.segsitesin == 0) { // Tasa de mutación fija con -t theta
+    if (pars.mp.segsitesin == 0) {                  // Tasa de mutación fija con -t theta
         list = cmatrix(pars.cp.nsam, maxsites + 1);
-        posit = (double *)malloc((
-            unsigned)(maxsites *
-                      sizeof(double))); // posit y agevec son los metadatos de los segmentos como la
-        agevec = (double *)malloc(
-            (unsigned)(maxsites * sizeof(double))); // posición donde ocurrió la mutación (rango de
-                                                    // 0 a 1) o la edad
+        posit = (double *)malloc((unsigned)(maxsites * sizeof(double)));    // posit y agevec son los metadatos de los segmentos como la
+        agevec = (double *)malloc((unsigned)(maxsites * sizeof(double)));   // posición donde ocurrió la mutación (rango de 0 a 1) o la edad
     } else {                                        // Sitios segregantes fijos -s segsites
         list = cmatrix(pars.cp.nsam, pars.mp.segsitesin + 1);
         posit = (double *)malloc((unsigned)(pars.mp.segsitesin * sizeof(double)));
@@ -212,10 +209,10 @@ int main(int argc, char *argv[])
 
         segsites = gensam(list, &probss, &tmrca, &ttot);
 
-        if (pars.mp.timeflag)
+        if (pars.mp.timeflag)                                      
             fprintf(pf, "time:\t%lf\t%lf\n", tmrca, ttot);
 
-        if ((segsites > 0) || (pars.mp.theta > 0.0)) { // Impresión de los resultados
+        if ((segsites > 0) || (pars.mp.theta > 0.0)) {              // Impresión de los resultados
             if ((pars.mp.segsitesin > 0) && (pars.mp.theta > 0.0))
                 fprintf(pf, "prob: %g\n", probss);
             fprintf(pf, "segsites: %d\n", segsites);
@@ -256,12 +253,12 @@ int main(int argc, char *argv[])
  *rama hasta coalescer. Por último aplica las mutaciones sobre las ramas de manera aleatoria con
  *make_gametes().
  *
- *	@param[out]	list : Es la lista de segmentos de ADN de los individuos a completar
- *	@param[out]	pprobss : Es la probailidad de que bajo una tasa de mutación theeta se den n
+ *	@param[out]	list : Lista de segmentos de ADN de los individuos a completar
+ *	@param[out]	pprobss : La probailidad de que bajo una tasa de mutación theeta se den n
  *segsites fijos
- *	@param[out]	ptmrca : El tiempo en llegar al most recent common ancester
- *	@param[out]	pttot : El tiempo total para la coalescencia del arbol
- *	@return	ns : La cantidad de sitios segregantes
+ *	@param[out]	ptmrca : Tiempo en llegar al most recent common ancester
+ *	@param[out]	pttot : Tiempo total para la coalescencia del arbol
+ *	@return	ns : Cantidad de sitios segregantes
  *
  */
 int gensam(char **list, double *pprobss, double *ptmrca, double *pttot)
@@ -420,19 +417,30 @@ void biggerlist(int nsam, char **list)
     }
 }
 
-/* allocates space for gametes (character strings) */
+/*
+ *	@brief Reserva memoria de manera dinámica para la matríz que guarda las secuencias de ADN
+ *  
+ *  Asigna espacio para un arreglo de punteros donde la cantidad de filas son la cantidad de 
+ *  individuos y la cantidad de columnas la cantidad de sitios segregantes o mutaciones que
+ *  surgen para cada secuencia.
+ * 
+ *	@param[in]	nsam : Tamaño de la muestra
+ *	@param[in]	len : Longitud de cada cadena. Puede ser prefijado con nsegsites (opción -s)
+ *                    o puede usar una cantidad maxima fijada de antemano (maxsites)
+ *  @return matrix : Puntero a la matríz de caracteres
+ */
 char **cmatrix(int nsam, int len)
 {
     int i;
-    char **m;
+    char **matrix;
 
-    if (!(m = (char **)malloc((unsigned)nsam * sizeof(char *))))
+    if (!(matrix = (char **)malloc((unsigned)nsam * sizeof(char *))))
         perror("alloc error in cmatrix");
     for (i = 0; i < nsam; i++) {
-        if (!(m[i] = (char *)malloc((unsigned)len * sizeof(char))))
+        if (!(matrix[i] = (char *)malloc((unsigned)len * sizeof(char))))
             perror("alloc error in cmatric. 2");
     }
-    return (m);
+    return (matrix);
 }
 
 void locate(int n, double beg, double len, double *ptr)
@@ -443,6 +451,18 @@ void locate(int n, double beg, double len, double *ptr)
         ptr[i] = beg + ptr[i] * len;
 }
 
+/*
+ *	@brief Obtiene los parámetros de la simulación, los valida y procesa.
+ *
+ *  Analiza los parámetros validando la cantidad de argumentos que requiere el programa. Los guarda 
+ *  en la estructura global de parámetros "pars" y valida que sean correctos. Soporta el pasaje de
+ *  parámetros en diferido o mediante un archivo con la opción -f.
+ * 
+ *	@param[in]	argc : Cantidad de parámetros pasados al ejecutar el programa
+ *	@param[in]	argv : Lista de parámetros pasados al ejecutar el programa
+ *	@param[out]	phowmany : Cantidad de repeticiones sobre un mismo conjunto de muestras a simular
+ *
+ */
 void getpars(int argc, char *argv[], int *phowmany)
 {
     int arg, i, j, sum, pop, argstart, npop, npop2, pop2;
