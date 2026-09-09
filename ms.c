@@ -99,6 +99,10 @@ this suggestion.) Changed function definitions, and misc other things to comply 
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef _OPENMP
+#include <omp.h>
+#endif
+
 #define SITESINC 10
 
 unsigned maxsites = SITESINC;
@@ -110,13 +114,21 @@ double segfac;
 int count, ntbs, nseeds;
 struct params pars;
 
+#pragma omp threadprivate(maxsites, posit, agevec, allelage)
+
+// Cada thread tiene su propia matriz
+static char **ms_list = NULL ;
+#pragma omp threadprivate(ms_list)
+
 // Prototypes
 
-int gensam(char **list, double *pprobss, double *ptmrca, double *pttot);
+int gensam(FILE *pf, char **list, double *pprobss, double *ptmrca, double *pttot);
 void ndes_setup(struct node *ptree, int nsam);
 void biggerlist(int nsam, char **list);
 char **cmatrix(int nsam, int len);
 void locate(int n, double beg, double len, double *ptr);
+void ms_alloc_thread_buffers(void);
+void run_one_replicate(FILE *pf);
 
 void getpars(int argc, char *argv[], int *phowmany);
 void argcheck(int arg, int argc, char *argv[]);
@@ -127,8 +139,8 @@ void make_gametes(int nsam, int mfreq, struct node *ptree, double tt, int newsit
                   char **list);
 double ttime(struct node *ptree, int nsam);
 double ttimemf(struct node *ptree, int nsam, int mfreq);
-void prtree(struct node *ptree, int nsam);
-void parens(struct node *ptree, int *descl, int *descr, int noden);
+void prtree(FILE *pf, struct node *ptree, int nsam);
+void parens(FILE *pf, struct node *ptree, int *descl, int *descr, int noden);
 int pickb(int nsam, struct node *ptree, double tt);
 int pickbmf(int nsam, int mfreq, struct node *ptree, double tt);
 int tdesn(struct node *ptree, int tip, int node);
@@ -140,12 +152,77 @@ void ranvec(int n, double pbuf[]);
 int poisso(double u);
 double gasdev(double m, double v);
 
+/*
+*	@brief Aloca (o re-usa) los buffers de una replica (ms_list/posit/agevec) para el hilo que la está llamando. 
+*   Debe invocarse una vez por hilo, antes de simular cualquier réplica en ese hilo (los buffers luego se reutilizan/crecen 
+*   entre réplicas sucesivas del mismo hilo, igual que en el programa original de un solo thread).
+*/
+
+void ms_alloc_thread_buffers(void)
+{
+	int i ;
+ 
+	if ( pars.mp.segsitesin ==  0 ) {	// Tasa de mutación fija con -t theta
+	    ms_list = cmatrix(pars.cp.nsam, maxsites+1) ;
+        posit = (double *)malloc( (unsigned)( maxsites*sizeof( double)) ) ;		// posit y agevec son los metadatos de los segmentos como la 
+        agevec = (double *)malloc( (unsigned)( maxsites*sizeof( double)) ) ;	// posición donde ocurrió la mutación (rango de 0 a 1) o la edad 
+	}
+	else {		// Sitios segregantes fijos -s segsites
+	    ms_list = cmatrix(pars.cp.nsam, pars.mp.segsitesin+1 ) ;
+        posit = (double *)malloc( (unsigned)( pars.mp.segsitesin*sizeof( double)) ) ;
+        agevec = (double *)malloc( (unsigned)( pars.mp.segsitesin*sizeof( double)) ) ;
+	}
+	(void) i ;
+}
+
+/*
+*	@brief Simula una réplica e imprime su resultado en pf.
+*
+*	No imprime el encabezado "\n//" ni la línea de argumentos tbs, eso lo
+*	hace quien llama, porque difiere según si se usan o no argumentos tbs.
+*	Usa los buffers ms_list/posit/agevec del hilo que la ejecuta.
+*/
+void run_one_replicate(FILE *pf)
+{
+ 
+	int i, k, segsites, afreq ;
+	double probss, tmrca, ttot ;
+ 
+	segsites = gensam(pf, ms_list, &probss, &tmrca, &ttot) ;
+ 
+	if( pars.mp.timeflag ) fprintf(pf,"time:\t%lf\t%lf\n",tmrca, ttot ) ;
+ 
+	if( (segsites > 0 ) || ( pars.mp.theta > 0.0 ) ) {	// Impresión de los resultados
+   	    if( (pars.mp.segsitesin > 0 ) && ( pars.mp.theta > 0.0 )) 
+		    fprintf(pf,"prob: %g\n", probss ) ;
+        fprintf(pf,"segsites: %d\n",segsites);
+        if( segsites > 0 )    fprintf(pf,"positions: ");
+        for( i=0; i<segsites; i++)
+            fprintf(pf,"%6.*lf ", pars.output_precision,posit[i] );
+        fprintf(pf,"\n");
+        if( (segsites > 0) && pars.mp.ageflag ){
+            fprintf(pf,"allele ages: ");
+            for( i=0; i<segsites; i++)
+               fprintf(pf,"%6.*lf ", pars.output_precision,agevec[i] );
+            fprintf(pf,"\n");
+            fprintf(pf,"allele freqs: ");
+            for( i=0; i<segsites; i++){
+                for(k=afreq=0; k<pars.cp.nsam; k++) afreq += ( (ms_list[k][i] == '1') ? 1: 0 ) ;
+                fprintf(pf,"%d ", afreq );
+            }
+            fprintf(pf,"\n");
+        }
+	    if( segsites > 0 )
+			for(i=0;i<pars.cp.nsam; i++) { fprintf(pf,"%s\n", ms_list[i] ); }
+	}
+}
+
 int main(int argc, char *argv[])
 {
-    int i, k, howmany, segsites, afreq;
-    char **list, **tbsparamstrs;
+    int i, k, howmany;
+    char **tbsparamstrs;
     FILE *pf;
-    double probss, tmrca, ttot;
+    char **out_bufs = NULL ;
 
     /* these next few lines are for reading in parameters from a file (for each sample) */
     ntbs = 0;
@@ -173,76 +250,81 @@ int main(int argc, char *argv[])
         seedit("s");                                // Si no hay parametros, seteamos el seed en "s"
     pf = stdout;
 
-    if (pars.mp.segsitesin == 0) {                  // Tasa de mutación fija con -t theta
-        list = cmatrix(pars.cp.nsam, maxsites + 1);
-        posit = (double *)malloc((unsigned)(maxsites * sizeof(double)));    // posit y agevec son los metadatos de los segmentos como la
-        agevec = (double *)malloc((unsigned)(maxsites * sizeof(double)));   // posición donde ocurrió la mutación (rango de 0 a 1) o la edad
-    } else {                                        // Sitios segregantes fijos -s segsites
-        list = cmatrix(pars.cp.nsam, pars.mp.segsitesin + 1);
-        posit = (double *)malloc((unsigned)(pars.mp.segsitesin * sizeof(double)));
-        agevec = (double *)malloc((unsigned)(pars.mp.segsitesin * sizeof(double)));
-        if (pars.mp.theta > 0.0) {
-            segfac = 1.0;
-            for (i = pars.mp.segsitesin; i > 1; i--)
-                segfac *= i;
+    /*
+        segfac solo depende de que segsitesin y theta sea > 0. 
+        Dejando de lado el caso con parámetros diferidos (en el cual puede cambiar), cc se mantiene fijo
+    */
+    if ( (pars.mp.segsitesin > 0 ) && (pars.mp.theta > 0.0 ) ){
+		segfac = 1.0 ;
+		for(i= pars.mp.segsitesin; i > 1; i--) 
+			segfac *= i ;
+	}
+
+    /*
+        Si se usan parámetros diferidos, la ejecución resulta equivalente a la secuencial, por lo que
+        en caso de que se active esa opción, mantenemos el flujo de ejecución original.
+        Caso contrario, se ejecuta de manera paralela.
+    */
+    
+    if (ntbs > 0){
+        ms_seed_thread() ; 
+        ms_alloc_thread_buffers() ;
+
+        while ( howmany-count++ ) {
+		   if(count > 1){
+				for( k=0; k<ntbs; k++){ 
+				    if( scanf(" %s", tbsparamstrs[k]) == EOF ){
+				       if( !pars.commandlineseedflag ) seedit( "end" );
+					   exit(0);
+					}
+				}
+				getpars(argc, argv, &howmany) ;
+		   }
+ 
+			fprintf(pf,"\n//");
+			for (k=0; k< ntbs; k++) fprintf(pf,"\t%s", tbsparamstrs[k]) ;
+			fprintf(pf,"\n");
+ 
+			run_one_replicate( pf ) ;
         }
     }
+    else{  
+        // Buffer de salida para mantener salidas consistentes y ordenadas
 
-    while (howmany - count++) {
-        if ((ntbs > 0) && (count > 1)) {
-            for (k = 0; k < ntbs; k++) {
-                if (scanf(" %s", tbsparamstrs[k]) == EOF) {
-                    if (!pars.commandlineseedflag)
-                        seedit("end");
-                    exit(0);
-                }
+        out_bufs = (char **) calloc( (size_t) howmany, sizeof(char *) );
+		if( out_bufs == NULL ) perror("calloc error. main. out_bufs");
+
+        #pragma omp parallel
+        {
+            ms_seed_thread() ;
+            ms_alloc_thread_buffers() ;
+
+            #pragma omp for schedule(dynamic)
+            for (i=0 ; i < howmany ; i++){
+                char *buf = NULL ;
+				size_t bufsize = 0 ;
+				FILE *mf = open_memstream( &buf, &bufsize ) ;
+				if( mf == NULL ) perror("open_memstream error. main");
+ 
+				fprintf(mf,"\n//\n") ;
+				run_one_replicate( mf ) ;
+ 
+				fclose(mf) ;
+				out_bufs[i] = buf ;
             }
-            getpars(argc, argv, &howmany);
+            
         }
-
-        fprintf(pf, "\n//");
-        if (ntbs > 0) {
-            for (k = 0; k < ntbs; k++)
-                printf("\t%s", tbsparamstrs[k]);
+        for (i=0 ; i < howmany ; i++){
+            fputs(out_bufs[i], pf) ;
+			free(out_bufs[i]) ;
         }
-        printf("\n");
-
-        segsites = gensam(list, &probss, &tmrca, &ttot);
-
-        if (pars.mp.timeflag)                                      
-            fprintf(pf, "time:\t%lf\t%lf\n", tmrca, ttot);
-
-        if ((segsites > 0) || (pars.mp.theta > 0.0)) {              // Impresión de los resultados
-            if ((pars.mp.segsitesin > 0) && (pars.mp.theta > 0.0))
-                fprintf(pf, "prob: %g\n", probss);
-            fprintf(pf, "segsites: %d\n", segsites);
-            if (segsites > 0)
-                fprintf(pf, "positions: ");
-            for (i = 0; i < segsites; i++)
-                fprintf(pf, "%6.*lf ", pars.output_precision, posit[i]);
-            fprintf(pf, "\n");
-            if ((segsites > 0) && pars.mp.ageflag) {
-                fprintf(pf, "allele ages: ");
-                for (i = 0; i < segsites; i++)
-                    fprintf(pf, "%6.*lf ", pars.output_precision, agevec[i]);
-                fprintf(pf, "\n");
-                fprintf(pf, "allele freqs: ");
-                for (i = 0; i < segsites; i++) {
-                    for (k = afreq = 0; k < pars.cp.nsam; k++)
-                        afreq += ((list[k][i] == '1') ? 1 : 0);
-                    fprintf(pf, "%d ", afreq);
-                }
-                fprintf(pf, "\n");
-            }
-            if (segsites > 0)
-                for (i = 0; i < pars.cp.nsam; i++) {
-                    fprintf(pf, "%s\n", list[i]);
-                }
-        }
+        free(out_bufs);
     }
 
     if (!pars.commandlineseedflag)
         seedit("end");
+    
+    return 0 ;
 }
 
 /*
@@ -261,7 +343,7 @@ int main(int argc, char *argv[])
  *	@return	ns : Cantidad de sitios segregantes
  *
  */
-int gensam(char **list, double *pprobss, double *ptmrca, double *pttot)
+int gensam(FILE *pf, char **list, double *pprobss, double *ptmrca, double *pttot)
 {
     int nsegs, i, k, seg, ns, start, end, len, segsit;
     struct segl *seglst;
@@ -289,9 +371,9 @@ int gensam(char **list, double *pprobss, double *ptmrca, double *pttot)
                 end = (k < nsegs - 1 ? seglst[seglst[seg].next].beg - 1 : nsites - 1);
                 start = seglst[seg].beg;
                 len = end - start + 1;
-                fprintf(stdout, "[%d]", len);
+                fprintf(pf, "[%d]", len);
             }
-            prtree(seglst[seg].ptree, nsam);
+            prtree(pf, seglst[seg].ptree, nsam);
             if ((segsitesin == 0) && (theta == 0.0) && (pars.mp.timeflag == 0))
                 free(seglst[seg].ptree);
         }
@@ -1020,8 +1102,8 @@ double ttimemf(struct node *ptree, int nsam, int mfreq)
     return (t);
 }
 
-void prtree(struct node *ptree, int nsam)
-{
+void prtree(FILE *pf, struct node *ptree, int nsam)
+{   
     int i, *descl, *descr;
 
     descl = (int *)malloc((unsigned)(2 * nsam - 1) * sizeof(int));
@@ -1038,29 +1120,29 @@ void prtree(struct node *ptree, int nsam)
         }
     }
 
-    parens(ptree, descl, descr, 2 * nsam - 2);
+    parens(pf, ptree, descl, descr, 2*nsam - 2);
     free(descl);
     free(descr);
 }
 
 // Función para imprimir los arboles en formato de Newick
-void parens(struct node *ptree, int *descl, int *descr, int noden)
+void parens(FILE *pf, struct node *ptree, int *descl, int *descr, int noden)
 {
     double time;
 
     if (descl[noden] == -1) {
-        printf("%d:%5.3lf", noden + 1,
+        printf(pf, "%d:%5.3lf", noden + 1,
                (ptree + ((ptree + noden)->abv))->time - (ptree + noden)->time); /* adna */
     } else {
-        printf("(");
-        parens(ptree, descl, descr, descl[noden]);
-        printf(",");
-        parens(ptree, descl, descr, descr[noden]);
+        printf(pf, "(");
+        parens(pf, ptree, descl, descr, descl[noden]);
+        printf(pf, ",");
+        parens(pf, ptree, descl, descr, descr[noden]);
         if ((ptree + noden)->abv == 0) {
-            printf(");\n");
+            printf(pf, ");\n");
         } else {
             time = (ptree + (ptree + noden)->abv)->time - (ptree + noden)->time;
-            printf("):%5.3lf", time);
+            printf(pf, "):%5.3lf", time);
         }
     }
 }

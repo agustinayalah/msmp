@@ -68,6 +68,8 @@ struct node *ptree1, *ptree2, *ptree0;
 
 static struct segl *seglst = NULL;
 
+#pragma omp threadprivate(nchrom, begs, nsegs, nlinks, t, cleft, pc, lnpc, nnodes, seglimit, maxchr, chrom, ptree1, ptree2, ptree0, seglst)
+
 /* ---- funciones externas (rand1.c, ms.c) ---- */
 extern double ran1(void);
 extern int pick2(int n, int *i, int *j);
