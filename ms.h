@@ -1,3 +1,5 @@
+#include <stdio.h>
+
 struct devent {
     double time;
     int popi;
@@ -70,3 +72,6 @@ void seedit(const char *flag);
 struct segl *segtre_mig(struct c_params *cp, int *pnsegs);
 int commandlineseed(char **seeds);
 double ran1(void);
+void ms_seed_thread(void) ;
+void prtree(FILE *pf, struct node *ptree, int nsam);
+void parens(FILE *pf, struct node *ptree, int *descl, int *descr, int noden);

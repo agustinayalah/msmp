@@ -114,7 +114,7 @@ double segfac;
 int count, ntbs, nseeds;
 struct params pars;
 
-#pragma omp threadprivate(maxsites, posit, agevec, allelage)
+#pragma omp threadprivate(maxsites, posit, agevec, alleleage)
 
 // Cada thread tiene su propia matriz
 static char **ms_list = NULL ;
@@ -153,9 +153,8 @@ int poisso(double u);
 double gasdev(double m, double v);
 
 /*
-*	@brief Aloca (o re-usa) los buffers de una replica (ms_list/posit/agevec) para el hilo que la está llamando. 
-*   Debe invocarse una vez por hilo, antes de simular cualquier réplica en ese hilo (los buffers luego se reutilizan/crecen 
-*   entre réplicas sucesivas del mismo hilo, igual que en el programa original de un solo thread).
+*	@brief Aloca los buffers de una replica (ms_list/posit/agevec) para el hilo que la está llamando. 
+*   Debe invocarse una vez por hilo, antes de simular cualquier réplica en ese hilo.
 */
 
 void ms_alloc_thread_buffers(void)
@@ -176,11 +175,7 @@ void ms_alloc_thread_buffers(void)
 }
 
 /*
-*	@brief Simula una réplica e imprime su resultado en pf.
-*
-*	No imprime el encabezado "\n//" ni la línea de argumentos tbs, eso lo
-*	hace quien llama, porque difiere según si se usan o no argumentos tbs.
-*	Usa los buffers ms_list/posit/agevec del hilo que la ejecuta.
+*	@brief Simula una réplica construyendo el arbol con gensam y aplicando mutaciónes e imprime su resultado en pf.
 */
 void run_one_replicate(FILE *pf)
 {
@@ -190,30 +185,30 @@ void run_one_replicate(FILE *pf)
  
 	segsites = gensam(pf, ms_list, &probss, &tmrca, &ttot) ;
  
-	if( pars.mp.timeflag ) fprintf(pf,"time:\t%lf\t%lf\n",tmrca, ttot ) ;
+	if(pars.mp.timeflag) fprintf(pf,"time:\t%lf\t%lf\n",tmrca, ttot) ;
  
-	if( (segsites > 0 ) || ( pars.mp.theta > 0.0 ) ) {	// Impresión de los resultados
-   	    if( (pars.mp.segsitesin > 0 ) && ( pars.mp.theta > 0.0 )) 
+	if ((segsites > 0 ) || ( pars.mp.theta > 0.0 )) {	// Impresión de los resultados
+   	    if ((pars.mp.segsitesin > 0 ) && ( pars.mp.theta > 0.0 )) 
 		    fprintf(pf,"prob: %g\n", probss ) ;
         fprintf(pf,"segsites: %d\n",segsites);
-        if( segsites > 0 )    fprintf(pf,"positions: ");
-        for( i=0; i<segsites; i++)
-            fprintf(pf,"%6.*lf ", pars.output_precision,posit[i] );
+        if (segsites > 0 )    fprintf(pf,"positions: ");
+        for (i=0; i<segsites; i++)
+            fprintf(pf,"%6.*lf ", pars.output_precision,posit[i]);
         fprintf(pf,"\n");
-        if( (segsites > 0) && pars.mp.ageflag ){
+        if ((segsites > 0) && pars.mp.ageflag){
             fprintf(pf,"allele ages: ");
-            for( i=0; i<segsites; i++)
+            for(i=0; i<segsites; i++)
                fprintf(pf,"%6.*lf ", pars.output_precision,agevec[i] );
             fprintf(pf,"\n");
             fprintf(pf,"allele freqs: ");
-            for( i=0; i<segsites; i++){
+            for(i=0; i<segsites; i++){
                 for(k=afreq=0; k<pars.cp.nsam; k++) afreq += ( (ms_list[k][i] == '1') ? 1: 0 ) ;
                 fprintf(pf,"%d ", afreq );
             }
             fprintf(pf,"\n");
         }
-	    if( segsites > 0 )
-			for(i=0;i<pars.cp.nsam; i++) { fprintf(pf,"%s\n", ms_list[i] ); }
+	    if(segsites > 0)
+		    for(i=0;i<pars.cp.nsam; i++) { fprintf(pf,"%s\n", ms_list[i] ); }
 	}
 }
 
@@ -303,17 +298,17 @@ int main(int argc, char *argv[])
             for (i=0 ; i < howmany ; i++){
                 char *buf = NULL ;
 				size_t bufsize = 0 ;
-				FILE *mf = open_memstream( &buf, &bufsize ) ;
-				if( mf == NULL ) perror("open_memstream error. main");
+				FILE *mf = open_memstream(&buf, &bufsize) ;
+				if (mf == NULL) perror("open_memstream error. main");
  
 				fprintf(mf,"\n//\n") ;
-				run_one_replicate( mf ) ;
+				run_one_replicate(mf) ;
  
 				fclose(mf) ;
 				out_bufs[i] = buf ;
             }
             
-        }
+        }   // Termina la región paralela, join de hilos
         for (i=0 ; i < howmany ; i++){
             fputs(out_bufs[i], pf) ;
 			free(out_bufs[i]) ;
@@ -1131,18 +1126,18 @@ void parens(FILE *pf, struct node *ptree, int *descl, int *descr, int noden)
     double time;
 
     if (descl[noden] == -1) {
-        printf(pf, "%d:%5.3lf", noden + 1,
+        fprintf(pf, "%d:%5.3lf", noden + 1,
                (ptree + ((ptree + noden)->abv))->time - (ptree + noden)->time); /* adna */
     } else {
-        printf(pf, "(");
+        fprintf(pf, "(");
         parens(pf, ptree, descl, descr, descl[noden]);
-        printf(pf, ",");
+        fprintf(pf, ",");
         parens(pf, ptree, descl, descr, descr[noden]);
         if ((ptree + noden)->abv == 0) {
-            printf(pf, ");\n");
+            fprintf(pf, ");\n");
         } else {
             time = (ptree + (ptree + noden)->abv)->time - (ptree + noden)->time;
-            printf(pf, "):%5.3lf", time);
+            fprintf(pf, "):%5.3lf", time);
         }
     }
 }

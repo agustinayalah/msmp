@@ -71,7 +71,6 @@ void seedit(char *flag)
  
 int commandlineseed(char **seeds)
 {
- 
 	master_seed[0] = (unsigned short) atoi( seeds[0] );
 	master_seed[1] = (unsigned short) atoi( seeds[1] );
 	master_seed[2] = (unsigned short) atoi( seeds[2] );
