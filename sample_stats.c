@@ -6,6 +6,7 @@ double nucdiv(int, int, char **);
 double tajd(int, int, double);
 double hfay(int, int, char **);
 double thetah(int, int, char **);
+int biggerlist(int nsam, unsigned nmax, char **list);
 
 int maxsites = 1000;
 
