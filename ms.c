@@ -123,8 +123,7 @@ void argcheck(int arg, int argc, char *argv[]);
 void usage(void);
 void addtoelist(struct devent *pt, struct devent *elist);
 void free_eventlist(struct devent *pt, int npop);
-void make_gametes(int nsam, int mfreq, struct node *ptree, double tt, int newsites, int ns,
-                  char **list);
+void make_gametes(int nsam, int mfreq, struct node *ptree, double tt, int newsites, int ns, char **list);
 double ttime(struct node *ptree, int nsam);
 double ttimemf(struct node *ptree, int nsam, int mfreq);
 void prtree(struct node *ptree, int nsam);
