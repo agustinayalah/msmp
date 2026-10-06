@@ -3,8 +3,10 @@ col1
 migmat
 ms
 params
-*.txt
+sample_stats
 *.out
 *.time
 *.csv
 *.idea
+tests/cases/statistic/mspar/case2_mspar.txt
+tests/cases/statistic/mspar/case3_mspar.txt
