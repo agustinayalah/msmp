@@ -73,7 +73,7 @@
         !!! Fixed bug in -en option.  Earlier versions may have produced garbage when -en ... used.
 9 Dec 2003 Fixed bug which resulted in incorrect results for the case where rho = 0.0 and gene
 conversion rate > 0.0. This case was not handled correctly in early versions of the program. 5 Apr
-2004.  (Thanks to Vincent Plagnol for pointing out this problem.) Fixed bug in prtree().  Earlier
+2004.  (Thanks to Vincent Plagnol for pointing out this problem.) Fixed bug in print_tree().  Earlier
 versions may have produced garbage when the -T option was used. 1 Jul 2004. Fixed bug in -e. options
 that caused problems with -f option  13 Aug 2004. Fixed bug in -es option, which was a problem when
 used with -eG. (Thanks again to V. Plagnol.) 6 Nov. 2004 Added -F option:  -F minfreq  produces
@@ -83,7 +83,7 @@ Todd-Hubisz for finding and reporting this bug.) Added -seeds option 4 Nov 2006 
 arguments feature 4 Nov 2006 Added -L option.  10 May 2007 Changed -ej option to set Mki = 0
 pastward of the ej event.  See msdoc.pdf.  May 19 2007. fixed bug with memory allocation when using
 -I option. This caused problems expecially on Windows machines.  Thanks to several people, including
-Vitor Sousa and Stephane De Mita for help on this one. Oct. 17, 2007. Modified pickb() and pickbmf()
+Vitor Sousa and Stephane De Mita for help on this one. Oct. 17, 2007. Modified pick_branch() and pick_branch_freq()
 to eliminate rare occurrence of fixed mutations Thanks to J. Liechty and K. Thornton. 4 Feb 2010.
         Added -p n  switch to allow position output to be higher precision.  10 Nov 2012.
      Changed spot from int to long in the function re().  29 July 2013.  ( Thanks to Yuri D'Elia for
@@ -112,28 +112,28 @@ struct params pars;
 
 // Prototypes
 
-int gensam(char **list, double *pprobss, double *ptmrca, double *pttot);
-void ndes_setup(struct node *ptree, int nsam);
-void biggerlist(int nsam, char **list);
+int generate_sample(char **list, double *pprobss, double *ptmrca, double *pttot);
+void count_nodes(struct node *ptree, int nsam);
+void bigger_list(int nsam, char **list);
 char **cmatrix(int nsam, int len);
 void locate(int n, double beg, double len, double *ptr);
 
 void getpars(int argc, char *argv[], int *phowmany);
 void argcheck(int arg, int argc, char *argv[]);
 void usage(void);
-void addtoelist(struct devent *pt, struct devent *elist);
-void free_eventlist(struct devent *pt, int npop);
+void add_to_event_list(struct devent *pt, struct devent *elist);
+void free_event_list(struct devent *pt, int npop);
 void make_gametes(int nsam, int mfreq, struct node *ptree, double tt, int newsites, int ns, char **list);
-double ttime(struct node *ptree, int nsam);
-double ttimemf(struct node *ptree, int nsam, int mfreq);
-void prtree(struct node *ptree, int nsam);
-void parens(struct node *ptree, int *descl, int *descr, int noden);
-int pickb(int nsam, struct node *ptree, double tt);
-int pickbmf(int nsam, int mfreq, struct node *ptree, double tt);
-int tdesn(struct node *ptree, int tip, int node);
-int pick2(int n, int *i, int *j);
+double tree_time(struct node *ptree, int nsam);
+double tree_time_mfreq(struct node *ptree, int nsam, int mfreq);
+void print_tree(struct node *ptree, int nsam);
+void print_parenthesis(struct node *ptree, int *left_child, int *right_child, int noden);
+int pick_branch(int nsam, struct node *ptree, double tt);
+int pick_branch_freq(int nsam, int mfreq, struct node *ptree, double tt);
+int is_descendant(struct node *ptree, int tip, int node);
+int pick_2_random_numbers(int n, int *i, int *j);
 void ordran(int n, double pbuf[]);
-void mnmial(int n, int nclass, double p[], int rv[]);
+void multinomial(int n, int nclass, double p[], int rv[]);
 void order(int n, double pbuf[]);
 void ranvec(int n, double pbuf[]);
 int poisso(double u);
@@ -170,6 +170,7 @@ int main(int argc, char *argv[])
 
     if (!pars.commandlineseedflag)
         seedit("s");                                // Si no hay parametros, seteamos el seed en "s"
+
     pf = stdout;
 
     if (pars.mp.segsitesin == 0) {                  // Tasa de mutación fija con -t theta
@@ -206,7 +207,7 @@ int main(int argc, char *argv[])
         }
         printf("\n");
 
-        segsites = gensam(list, &probss, &tmrca, &ttot);
+        segsites = generate_sample(list, &probss, &tmrca, &ttot);
 
         if (pars.mp.timeflag)                                      
             fprintf(pf, "time:\t%lf\t%lf\n", tmrca, ttot);
@@ -260,7 +261,7 @@ int main(int argc, char *argv[])
  *	@return	ns : Cantidad de sitios segregantes
  *
  */
-int gensam(char **list, double *pprobss, double *ptmrca, double *pttot)
+int generate_sample(char **list, double *pprobss, double *ptmrca, double *pttot)
 {
     int nsegs, i, k, seg, ns, start, end, len, segsit;
     struct segl *seglst;
@@ -290,7 +291,7 @@ int gensam(char **list, double *pprobss, double *ptmrca, double *pttot)
                 len = end - start + 1;
                 fprintf(stdout, "[%d]", len);
             }
-            prtree(seglst[seg].ptree, nsam);
+            print_tree(seglst[seg].ptree, nsam);
             if ((segsitesin == 0) && (theta == 0.0) && (pars.mp.timeflag == 0))
                 free(seglst[seg].ptree);
         }
@@ -300,7 +301,7 @@ int gensam(char **list, double *pprobss, double *ptmrca, double *pttot)
         tt = 0.0;
         for (seg = 0, k = 0; k < nsegs; seg = seglst[seg].next, k++) {
             if (mfreq > 1)
-                ndes_setup(seglst[seg].ptree, nsam);
+                count_nodes(seglst[seg].ptree, nsam);
             end = (k < nsegs - 1 ? seglst[seglst[seg].next].beg - 1 : nsites - 1);
             start = seglst[seg].beg;
             if ((nsegs == 1) || ((start <= nsites / 2) && (end >= nsites / 2)))
@@ -308,9 +309,9 @@ int gensam(char **list, double *pprobss, double *ptmrca, double *pttot)
             len = end - start + 1;
             tseg = len / (double)nsites;
             if (mfreq == 1)
-                tt += ttime(seglst[seg].ptree, nsam) * tseg;
+                tt += tree_time(seglst[seg].ptree, nsam) * tseg;
             else
-                tt += ttimemf(seglst[seg].ptree, nsam, mfreq) * tseg;
+                tt += tree_time_mfreq(seglst[seg].ptree, nsam, mfreq) * tseg;
             if ((segsitesin == 0) && (theta == 0.0))
                 free(seglst[seg].ptree);
         }
@@ -321,21 +322,21 @@ int gensam(char **list, double *pprobss, double *ptmrca, double *pttot)
         ns = 0;
         for (seg = 0, k = 0; k < nsegs; seg = seglst[seg].next, k++) {
             if (mfreq > 1)
-                ndes_setup(seglst[seg].ptree, nsam);
+                count_nodes(seglst[seg].ptree, nsam);
             end = (k < nsegs - 1 ? seglst[seglst[seg].next].beg - 1 : nsites - 1);
             start = seglst[seg].beg;
             len = end - start + 1;
             tseg = len * (theta / nsites);
             if (mfreq == 1)
-                tt = ttime(seglst[seg].ptree, nsam);
+                tt = tree_time(seglst[seg].ptree, nsam);
             else
-                tt = ttimemf(seglst[seg].ptree, nsam, mfreq);
+                tt = tree_time_mfreq(seglst[seg].ptree, nsam, mfreq);
             segsit = poisso(tseg * tt);
             if ((segsit + ns) >= maxsites) {
                 maxsites = segsit + ns + SITESINC;
                 posit = (double *)realloc(posit, maxsites * sizeof(double));
                 agevec = (double *)realloc(agevec, maxsites * sizeof(double));
-                biggerlist(nsam, list);
+                bigger_list(nsam, list);
             }
             make_gametes(nsam, mfreq, seglst[seg].ptree, tt, segsit, ns, list);
             free(seglst[seg].ptree);
@@ -347,20 +348,20 @@ int gensam(char **list, double *pprobss, double *ptmrca, double *pttot)
         pk = (double *)malloc((unsigned)(nsegs * sizeof(double)));
         ss = (int *)malloc((unsigned)(nsegs * sizeof(int)));
         if ((pk == NULL) || (ss == NULL))
-            perror("malloc error. gensam.2");
+            perror("malloc error. generate_sample.2");
 
         tt = 0.0;
         for (seg = 0, k = 0; k < nsegs; seg = seglst[seg].next, k++) {
             if (mfreq > 1)
-                ndes_setup(seglst[seg].ptree, nsam);
+                count_nodes(seglst[seg].ptree, nsam);
             end = (k < nsegs - 1 ? seglst[seglst[seg].next].beg - 1 : nsites - 1);
             start = seglst[seg].beg;
             len = end - start + 1;
             tseg = len / (double)nsites;
             if (mfreq == 1)
-                pk[k] = ttime(seglst[seg].ptree, nsam) * tseg;
+                pk[k] = tree_time(seglst[seg].ptree, nsam) * tseg;
             else
-                pk[k] = ttimemf(seglst[seg].ptree, nsam, mfreq) * tseg;
+                pk[k] = tree_time_mfreq(seglst[seg].ptree, nsam, mfreq) * tseg;
             tt += pk[k];
         }
         if (theta > 0.0) {
@@ -370,7 +371,7 @@ int gensam(char **list, double *pprobss, double *ptmrca, double *pttot)
         if (tt > 0.0) {
             for (k = 0; k < nsegs; k++)
                 pk[k] /= tt;
-            mnmial(segsitesin, nsegs, pk, ss);
+            multinomial(segsitesin, nsegs, pk, ss);
         } else
             for (k = 0; k < nsegs; k++)
                 ss[k] = 0;
@@ -394,7 +395,7 @@ int gensam(char **list, double *pprobss, double *ptmrca, double *pttot)
     return (ns);
 }
 
-void ndes_setup(struct node *ptree, int nsam)
+void count_nodes(struct node *ptree, int nsam)
 {
     int i;
     for (i = 0; i < nsam; i++)
@@ -405,7 +406,7 @@ void ndes_setup(struct node *ptree, int nsam)
         (ptree + ((ptree + i)->abv))->ndes += (ptree + i)->ndes;
 }
 
-void biggerlist(int nsam, char **list)
+void bigger_list(int nsam, char **list)
 {
     int i;
     /*  fprintf(stderr,"maxsites: %d\n",maxsites);  */
@@ -515,7 +516,7 @@ void getpars(int argc, char *argv[], int *phowmany)
         pars.cp.nsites = 2;
     } else {
         npop = pars.cp.npop;
-        free_eventlist(pars.cp.deventlist, npop);
+        free_event_list(pars.cp.deventlist, npop);
     }
 
     pars.cp.deventlist = NULL;
@@ -754,7 +755,7 @@ void getpars(int argc, char *argv[], int *phowmany)
                 pars.cp.deventlist = pt;
                 pt->nextde = ptemp;
             } else {
-                addtoelist(pt, pars.cp.deventlist);
+                add_to_event_list(pt, pars.cp.deventlist);
             }
 
             switch (pt->detype) {
@@ -930,7 +931,7 @@ void usage()
     exit(1);
 }
 
-void addtoelist(struct devent *pt, struct devent *elist)
+void add_to_event_list(struct devent *pt, struct devent *elist)
 {
     struct devent *plast, *pevent, *ptemp;
 
@@ -944,7 +945,7 @@ void addtoelist(struct devent *pt, struct devent *elist)
     pt->nextde = ptemp;
 }
 
-void free_eventlist(struct devent *pt, int npop)
+void free_event_list(struct devent *pt, int npop)
 {
     struct devent *next;
     int pop;
@@ -975,12 +976,12 @@ void make_gametes(int nsam, int mfreq, struct node *ptree, double tt, int newsit
     int tip, j, node;
     for (j = ns; j < ns + newsites; j++) {
         if (mfreq == 1)
-            node = pickb(nsam, ptree, tt);
+            node = pick_branch(nsam, ptree, tt);
         else
-            node = pickbmf(nsam, mfreq, ptree, tt);
+            node = pick_branch_freq(nsam, mfreq, ptree, tt);
         agevec[j] = alleleage;
         for (tip = 0; tip < nsam; tip++) {
-            if (tdesn(ptree, tip, node))
+            if (is_descendant(ptree, tip, node))
                 list[tip][j] = STATE1;
             else
                 list[tip][j] = STATE2;
@@ -988,9 +989,9 @@ void make_gametes(int nsam, int mfreq, struct node *ptree, double tt, int newsit
     }
 }
 
-/***  ttime.c : Returns the total time in the tree, *ptree, with nsam tips. **/
+/***  tree_time.c : Returns the total time in the tree, *ptree, with nsam tips. **/
 
-double ttime(struct node *ptree, int nsam)
+double tree_time(struct node *ptree, int nsam)
 {
     double t;
     int i;
@@ -1004,7 +1005,7 @@ double ttime(struct node *ptree, int nsam)
     return (t);
 }
 
-double ttimemf(struct node *ptree, int nsam, int mfreq)
+double tree_time_mfreq(struct node *ptree, int nsam, int mfreq)
 {
     double t;
     int i;
@@ -1019,42 +1020,42 @@ double ttimemf(struct node *ptree, int nsam, int mfreq)
     return (t);
 }
 
-void prtree(struct node *ptree, int nsam)
+void print_tree(struct node *ptree, int nsam)
 {
-    int i, *descl, *descr;
+    int i, *left_child, *right_child;
 
-    descl = (int *)malloc((unsigned)(2 * nsam - 1) * sizeof(int));
-    descr = (int *)malloc((unsigned)(2 * nsam - 1) * sizeof(int));
+    left_child = (int *)malloc((unsigned)(2 * nsam - 1) * sizeof(int));
+    right_child = (int *)malloc((unsigned)(2 * nsam - 1) * sizeof(int));
     for (i = 0; i < 2 * nsam - 1; i++) {
-        descl[i] = descr[i] = -1;
+        left_child[i] = right_child[i] = -1;
     }
 
     for (i = 0; i < 2 * nsam - 2; i++) {
-        if (descl[(ptree + i)->abv] == -1) {
-            descl[(ptree + i)->abv] = i;
+        if (left_child[(ptree + i)->abv] == -1) {
+            left_child[(ptree + i)->abv] = i;
         } else {
-            descr[(ptree + i)->abv] = i;
+            right_child[(ptree + i)->abv] = i;
         }
     }
 
-    parens(ptree, descl, descr, 2 * nsam - 2);
-    free(descl);
-    free(descr);
+    print_parenthesis(ptree, left_child, right_child, 2 * nsam - 2);
+    free(left_child);
+    free(right_child);
 }
 
 // Función para imprimir los arboles en formato de Newick
-void parens(struct node *ptree, int *descl, int *descr, int noden)
+void print_parenthesis(struct node *ptree, int *left_child, int *right_child, int noden)
 {
     double time;
 
-    if (descl[noden] == -1) {
+    if (left_child[noden] == -1) {
         printf("%d:%5.3lf", noden + 1,
                (ptree + ((ptree + noden)->abv))->time - (ptree + noden)->time); /* adna */
     } else {
         printf("(");
-        parens(ptree, descl, descr, descl[noden]);
+        print_parenthesis(ptree, left_child, right_child, left_child[noden]);
         printf(",");
-        parens(ptree, descl, descr, descr[noden]);
+        print_parenthesis(ptree, left_child, right_child, right_child[noden]);
         if ((ptree + noden)->abv == 0) {
             printf(");\n");
         } else {
@@ -1064,11 +1065,11 @@ void parens(struct node *ptree, int *descl, int *descr, int noden)
     }
 }
 
-/***  pickb : returns a random branch from the tree. The probability of picking
+/***  pick_branch : returns a random branch from the tree. The probability of picking
               a particular branch is proportional to its duration. tt is total
               time in tree.   ****/
 
-int pickb(int nsam, struct node *ptree, double tt)
+int pick_branch(int nsam, struct node *ptree, double tt)
 {
     double x, y;
     int i;
@@ -1090,7 +1091,7 @@ int pickb(int nsam, struct node *ptree, double tt)
     return (2 * nsam - 3); /* changed 4 Feb 2010 */
 }
 
-int pickbmf(int nsam, int mfreq, struct node *ptree, double tt)
+int pick_branch_freq(int nsam, int mfreq, struct node *ptree, double tt)
 {
     double x, y;
     int i, lastbranch = 0;
@@ -1115,9 +1116,9 @@ int pickbmf(int nsam, int mfreq, struct node *ptree, double tt)
     return (lastbranch); /*  changed 4 Feb 2010 */
 }
 
-/****  tdesn : returns 1 if tip is a descendant of node in *ptree, otherwise 0. **/
+/****  is_descendant : returns 1 if tip is a descendant of node in *ptree, otherwise 0. **/
 
-int tdesn(struct node *ptree, int tip, int node)
+int is_descendant(struct node *ptree, int tip, int node)
 {
     int k;
 
@@ -1131,13 +1132,12 @@ int tdesn(struct node *ptree, int tip, int node)
     }
 }
 
-/* pick2()  */
+/* pick_2_random_numbers()  */
 
-int pick2(int n, int *i, int *j)
+int pick_2_random_numbers(int n, int *i, int *j)
 {
     *i = n * ran1();
-    while ((*j = n * ran1()) == *i)
-        ;
+    while ((*j = n * ran1()) == *i);
 
     return (0);
 }
@@ -1151,7 +1151,7 @@ void ordran(int n, double pbuf[])
     return;
 }
 
-void mnmial(int n, int nclass, double p[], int rv[])
+void multinomial(int n, int nclass, double p[], int rv[])
 {
     double x, s;
     int i, j;

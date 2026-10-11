@@ -1,4 +1,4 @@
-/**********  segtre_mig.c **********************************
+/**********  simulate_coalescent.c **********************************
 *
 *	This subroutine uses a Monte Carlo algorithm described in
 *	Hudson,R. 1983. Theor.Pop.Biol. 23: 183-201, to produce
@@ -43,7 +43,7 @@
 #define SEGINC 80
 
 int nchrom, begs, nsegs;
-long nlinks;
+long nchrom_links;
 static int *nnodes = NULL;
 double t, cleft, pc, lnpc;
 
@@ -70,22 +70,22 @@ static struct segl *seglst = NULL;
 
 /* ---- funciones externas (rand1.c, ms.c) ---- */
 extern double ran1(void);
-extern int pick2(int n, int *i, int *j);
+extern int pick_2_random_numbers(int n, int *i, int *j);
 
-struct segl *segtre_mig(struct c_params *cp, int *pnsegs);
-int re(int nsam);
-int cleftr(int nsam);
-int cinr(int nsam, int nsites);
-int xover(int nsam, int ic, int is);
-int ca(int nsam, int nsites, int c1, int c2);
-int isseg(int start, int c, int *psg);
-void pick2_chrom(int pop, int config[], int *pc1, int *pc2);
-int links(int c);
+struct segl *simulate_coalescent(struct c_params *cp, int *pnsegs);
+int recombination_event(int nsam);
+int conv_left(int nsam);
+int conv_inside(int nsam, int nsites);  // Conversion left y conversion inside
+int crossover(int nsam, int ic, int is);
+int merge_chrom(int nsam, int nsites, int c1, int c2);
+int chromosome_has_segment(int start, int c, int *psg);
+void pick_2_chrom(int pop, int config[], int *pc1, int *pc2);
+int chrom_links(int c);
 
 /*
  *	@brief Es la función generadora de arboles coalescentes.
  *
- *	Invoca a segtre_mig() que guarda en seglst el arbol de coalescencia. Luego en función de las
+ *	Invoca a simulate_coalescent() que guarda en seglst el arbol de coalescencia. Luego en función de las
  *  opciones ingresadas, muestra el arbol en formato Newick o muestra el tiempo que le tomó a cada
  *  rama hasta coalescer. Por último aplica las mutaciones sobre las ramas de manera aleatoria con
  *  make_gametes().
@@ -97,7 +97,7 @@ int links(int c);
  *	@return	seglst : La lista de segmentos de ADN
  *
  */
-struct segl *segtre_mig(struct c_params *cp, int *pnsegs)
+struct segl *simulate_coalescent(struct c_params *cp, int *pnsegs)
 {
     int i, j, k, seg, dec, pop, pop2, c1, c2, ind, rchrom, nsamin, numanc, num;
     int migrant, source_pop, *config;
@@ -140,12 +140,12 @@ struct segl *segtre_mig(struct c_params *cp, int *pnsegs)
     if (nnodes == NULL) {
         nnodes = (int *)malloc((unsigned)(seglimit * sizeof(int)));
         if (nnodes == NULL)
-            perror("malloc error. segtre_mig");
+            perror("malloc error. simulate_coalescent");
     }
     if (seglst == NULL) {
         seglst = (struct segl *)malloc((unsigned)(seglimit * sizeof(struct segl)));
         if (seglst == NULL)
-            perror("malloc error. segtre_mig.c 2");
+            perror("malloc error. simulate_coalescent.c 2");
     }
 
     config = (int *)malloc((unsigned)((npop + 1) * sizeof(int)));
@@ -185,7 +185,7 @@ struct segl *segtre_mig(struct c_params *cp, int *pnsegs)
     nnodes[0] = nsam - 1;
 
     nchrom = nsamin;                          /* adna */
-    nlinks = ((long)(nsamin)) * (nsites - 1); /* adna */
+    nchrom_links = ((long)(nsamin)) * (nsites - 1); /* adna */
     nsegs = 1;
     t = 0.;
     r /= (nsites - 1);
@@ -204,8 +204,8 @@ struct segl *segtre_mig(struct c_params *cp, int *pnsegs)
     /* Main loop */
 
     while ((nchrom + numanc) > 1) { /* adna */
-        prec = nlinks * r;
-        cin = nlinks * rf;
+        prec = nchrom_links * r;
+        cin = nchrom_links * rf;
         clefta = cleft * rft;
         prect = prec + cin + clefta;
         mig = 0.0; // Migración
@@ -348,7 +348,7 @@ struct segl *segtre_mig(struct c_params *cp, int *pnsegs)
                 break;
             case 'A': /* ancient dna sample */
                 num = nextevent->num;
-                nlinks += ((long)(num)) * (nsites - 1);
+                nchrom_links += ((long)(num)) * (nsites - 1);
                 cleft += num * (1.0 - pow(pc, (double)(nsites - 1)));
 
                 if ((nchrom + num) >= maxchr) {
@@ -414,13 +414,13 @@ struct segl *segtre_mig(struct c_params *cp, int *pnsegs)
             t += tmin;
             if (event == 'r') {
                 if ((ran = ran1()) < (prec / prect)) { /*recombination */
-                    rchrom = re(nsam);
+                    rchrom = recombination_event(nsam);
                     config[chrom[rchrom].pop] += 1;
                 } else if (ran < (prec + clefta) / (prect)) { /*  cleft event */
-                    rchrom = cleftr(nsam);
+                    rchrom = conv_left(nsam);
                     config[chrom[rchrom].pop] += 1;
                 } else { /* cin event */
-                    rchrom = cinr(nsam, nsites);
+                    rchrom = conv_inside(nsam, nsites);
                     if (rchrom >= 0)
                         config[chrom[rchrom].pop] += 1;
                 }
@@ -448,8 +448,8 @@ struct segl *segtre_mig(struct c_params *cp, int *pnsegs)
                 chrom[migrant].pop = source_pop;
             } else { /* coalescent event */
                 /* pick the two, c1, c2  */
-                pick2_chrom(cpop, config, &c1, &c2); /* c1 and c2 are chrom's to coalesce */
-                dec = ca(nsam, nsites, c1, c2);
+                pick_2_chrom(cpop, config, &c1, &c2); /* c1 and c2 are chrom's to coalesce */
+                dec = merge_chrom(nsam, nsites, c1, c2);
                 config[cpop] -= dec;
             }
         }
@@ -480,7 +480,7 @@ struct segl *segtre_mig(struct c_params *cp, int *pnsegs)
    is in a new spot, a new segment is added to seglst and a tree set up
    for it.   ****/
 
-int re(int nsam)
+int recombination_event(int nsam)
 {
     struct seg *pseg;
     int el, lsg, lsgm1, ic, is;
@@ -488,7 +488,7 @@ int re(int nsam)
 
     /* First generate a random x-over spot, then locate it as to chrom and seg. */
 
-    spot = nlinks * ran1() + 1.;
+    spot = nchrom_links * ran1() + 1.;
 
     /* get chromosome # (ic)  */
 
@@ -502,11 +502,11 @@ int re(int nsam)
         spot -= el;
     }
     is = pseg->beg + spot - 1;
-    xover(nsam, ic, is);
+    crossover(nsam, ic, is);
     return (ic);
 }
 
-int cleftr(int nsam)
+int conv_left(int nsam)
 {
     struct seg *pseg;
     int ic, is;
@@ -516,23 +516,23 @@ int cleftr(int nsam)
     sum = 0.0;
     ic = -1;
     while (sum < x) {
-        sum += 1.0 - pow(pc, links(++ic));
+        sum += 1.0 - pow(pc, chrom_links(++ic));
     }
     pseg = chrom[ic].pseg;
-    len = links(ic);
+    len = chrom_links(ic);
     is = pseg->beg + floor(1.0 + log(1.0 - (1.0 - pow(pc, len)) * ran1()) / lnpc) - 1;
-    xover(nsam, ic, is);
+    crossover(nsam, ic, is);
     return (ic);
 }
 
-int cinr(int nsam, int nsites)
+int conv_inside(int nsam, int nsites)
 {
     struct seg *pseg;
     int len, el, lsg, lsgm1, ic, is, spot, endic;
 
     /* First generate a random x-over spot, then locate it as to chrom and seg. */
 
-    spot = nlinks * ran1() + 1.;
+    spot = nchrom_links * ran1() + 1.;
 
     /* get chromosome # (ic)  */
 
@@ -547,21 +547,21 @@ int cinr(int nsam, int nsites)
     }
     is = pseg->beg + spot - 1;
     endic = (pseg + lsgm1)->end;
-    xover(nsam, ic, is);
+    crossover(nsam, ic, is);
 
     len = floor(1.0 + log(ran1()) / lnpc);
     if (is + len >= endic)
         return (ic);
     if (is + len < (chrom[nchrom - 1].pseg)->beg) {
-        ca(nsam, nsites, ic, nchrom - 1);
+        merge_chrom(nsam, nsites, ic, nchrom - 1);
         return (-1);
     }
-    xover(nsam, nchrom - 1, is + len);
-    ca(nsam, nsites, ic, nchrom - 1);
+    crossover(nsam, nchrom - 1, is + len);
+    merge_chrom(nsam, nsites, ic, nchrom - 1);
     return (ic);
 }
 
-int xover(int nsam, int ic, int is)
+int crossover(int nsam, int ic, int is)
 {
     struct seg *pseg, *pseg2;
     int i, lsg, lsgm1, newsg, jseg, k, in;
@@ -610,7 +610,7 @@ int xover(int nsam, int ic, int is)
 
     lsg = chrom[ic].nseg = lsg - newsg + in;
     lsgm1 = lsg - 1;
-    nlinks -= pseg2->beg - (pseg + lsgm1)->end;
+    nchrom_links -= pseg2->beg - (pseg + lsgm1)->end;
     len = (pseg + lsgm1)->end - (pseg->beg);
     cleft += 1.0 - pow(pc, len);
     len = (pseg2 + newsg - 1)->end - pseg2->beg;
@@ -630,10 +630,10 @@ int xover(int nsam, int ic, int is)
                 seglimit += SEGINC;
                 nnodes = (int *)realloc(nnodes, (unsigned)(sizeof(int) * seglimit));
                 if (nnodes == NULL)
-                    perror("realloc error. 1. segtre_mig.c");
+                    perror("realloc error. 1. simulate_coalescent.c");
                 seglst = (struct segl *)realloc(seglst, (unsigned)(sizeof(struct segl) * seglimit));
                 if (seglst == NULL)
-                    perror("realloc error. 2. segtre_mig.c");
+                    perror("realloc error. 2. simulate_coalescent.c");
                 /*  printf("seglimit: %d\n",seglimit);  */
             }
             seglst[nsegs].next = seglst[i].next;
@@ -658,7 +658,7 @@ int xover(int nsam, int ic, int is)
 /***** common ancestor subroutine **********************
    Pick two chromosomes and merge them. Update trees if necessary. **/
 
-int ca(int nsam, int nsites, int c1, int c2)
+int merge_chrom(int nsam, int nsites, int c1, int c2)
 {
     int yes1, yes2, seg1, seg2, seg;
     int tseg, start, end, desc, k;
@@ -675,8 +675,8 @@ int ca(int nsam, int nsites, int c1, int c2)
 
     for (seg = 0, k = 0; k < nsegs; seg = seglst[seg].next, k++) {
         start = seglst[seg].beg;
-        yes1 = isseg(start, c1, &seg1);
-        yes2 = isseg(start, c2, &seg2);
+        yes1 = chromosome_has_segment(start, c1, &seg1);
+        yes2 = chromosome_has_segment(start, c2, &seg2);
         if (yes1 || yes2) {
             tseg++;
             (pseg + tseg)->beg = seglst[seg].beg;
@@ -702,8 +702,8 @@ int ca(int nsam, int nsites, int c1, int c2)
             }
         }
     }
-    nlinks -= links(c1);
-    cleft -= 1.0 - pow(pc, (double)links(c1));
+    nchrom_links -= chrom_links(c1);
+    cleft -= 1.0 - pow(pc, (double)chrom_links(c1));
     free(chrom[c1].pseg);
     if (tseg < 0) {
         free(pseg);
@@ -718,11 +718,11 @@ int ca(int nsam, int nsites, int c1, int c2)
             perror(" realloc error. ca1");
         chrom[c1].pseg = pseg;
         chrom[c1].nseg = tseg + 1;
-        nlinks += links(c1);
-        cleft += 1.0 - pow(pc, (double)links(c1));
+        nchrom_links += chrom_links(c1);
+        cleft += 1.0 - pow(pc, (double)chrom_links(c1));
     }
-    nlinks -= links(c2);
-    cleft -= 1.0 - pow(pc, (double)links(c2));
+    nchrom_links -= chrom_links(c2);
+    cleft -= 1.0 - pow(pc, (double)chrom_links(c2));
     free(chrom[c2].pseg);
     chrom[c2].pseg = chrom[nchrom - 1].pseg;
     chrom[c2].nseg = chrom[nchrom - 1].nseg;
@@ -734,11 +734,11 @@ int ca(int nsam, int nsites, int c1, int c2)
         return (1);
 }
 
-/*** Isseg: Does chromosome c contain the segment on seglst which starts at
+/*** chromosome_has_segment: Does chromosome c contain the segment on seglst which starts at
             start? *psg is the segment of chrom[c] at which one is to begin
             looking.  **/
 
-int isseg(int start, int c, int *psg)
+int chromosome_has_segment(int start, int c, int *psg)
 {
     int ns;
     struct seg *pseg;
@@ -753,7 +753,7 @@ int isseg(int start, int c, int *psg)
     return (0);
 }
 
-void pick2_chrom(int pop, int config[], int *pc1, int *pc2)
+void pick_2_chrom(int pop, int config[], int *pc1, int *pc2)
 {
     int c1, c2, cs, cb, i, count;
 
@@ -783,9 +783,9 @@ void pick2_chrom(int pop, int config[], int *pc1, int *pc2)
     *pc2 = i;
 }
 
-/****  links(c): returns the number of links between beginning and end of chrom **/
+/****  chrom_links(c): returns the number of chrom_links between beginning and end of chrom **/
 
-int links(int c)
+int chrom_links(int c)
 {
     int ns;
 
