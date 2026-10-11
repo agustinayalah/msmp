@@ -70,17 +70,17 @@ static struct segl *seglst = NULL;
 
 /* ---- funciones externas (rand1.c, ms.c) ---- */
 extern double ran1(void);
-extern int pick_2_random_numbers(int n, int *i, int *j);
 
 struct segl *simulate_coalescent(struct c_params *cp, int *pnsegs);
-int recombination_event(int nsam);
-int conv_left(int nsam);
-int conv_inside(int nsam, int nsites);  // Conversion left y conversion inside
-int crossover(int nsam, int ic, int is);
-int merge_chrom(int nsam, int nsites, int c1, int c2);
-int chromosome_has_segment(int start, int c, int *psg);
-void pick_2_chrom(int pop, int config[], int *pc1, int *pc2);
-int chrom_links(int c);
+static int recombination_event(int nsam);
+static int conv_left(int nsam);
+static int conv_inside(int nsam, int nsites);  // Conversion left y conversion inside
+static int crossover(int nsam, int ic, int is);
+static int merge_chrom(int nsam, int nsites, int c1, int c2);
+static int chromosome_has_segment(int start, int c, int *psg);
+static void pick_2_chrom(int pop, int config[], int *pc1, int *pc2);
+static int pick_2_random_numbers(int n, int *i, int *j);
+static int chrom_links(int c);
 
 /*
  *	@brief Es la función generadora de arboles coalescentes.
@@ -480,7 +480,7 @@ struct segl *simulate_coalescent(struct c_params *cp, int *pnsegs)
    is in a new spot, a new segment is added to seglst and a tree set up
    for it.   ****/
 
-int recombination_event(int nsam)
+static int recombination_event(int nsam)
 {
     struct seg *pseg;
     int el, lsg, lsgm1, ic, is;
@@ -506,7 +506,7 @@ int recombination_event(int nsam)
     return (ic);
 }
 
-int conv_left(int nsam)
+static int conv_left(int nsam)
 {
     struct seg *pseg;
     int ic, is;
@@ -525,7 +525,7 @@ int conv_left(int nsam)
     return (ic);
 }
 
-int conv_inside(int nsam, int nsites)
+static int conv_inside(int nsam, int nsites)
 {
     struct seg *pseg;
     int len, el, lsg, lsgm1, ic, is, spot, endic;
@@ -561,7 +561,7 @@ int conv_inside(int nsam, int nsites)
     return (ic);
 }
 
-int crossover(int nsam, int ic, int is)
+static int crossover(int nsam, int ic, int is)
 {
     struct seg *pseg, *pseg2;
     int i, lsg, lsgm1, newsg, jseg, k, in;
@@ -658,7 +658,7 @@ int crossover(int nsam, int ic, int is)
 /***** common ancestor subroutine **********************
    Pick two chromosomes and merge them. Update trees if necessary. **/
 
-int merge_chrom(int nsam, int nsites, int c1, int c2)
+static int merge_chrom(int nsam, int nsites, int c1, int c2)
 {
     int yes1, yes2, seg1, seg2, seg;
     int tseg, start, end, desc, k;
@@ -738,7 +738,7 @@ int merge_chrom(int nsam, int nsites, int c1, int c2)
             start? *psg is the segment of chrom[c] at which one is to begin
             looking.  **/
 
-int chromosome_has_segment(int start, int c, int *psg)
+static int chromosome_has_segment(int start, int c, int *psg)
 {
     int ns;
     struct seg *pseg;
@@ -753,7 +753,7 @@ int chromosome_has_segment(int start, int c, int *psg)
     return (0);
 }
 
-void pick_2_chrom(int pop, int config[], int *pc1, int *pc2)
+static void pick_2_chrom(int pop, int config[], int *pc1, int *pc2)
 {
     int c1, c2, cs, cb, i, count;
 
@@ -783,9 +783,19 @@ void pick_2_chrom(int pop, int config[], int *pc1, int *pc2)
     *pc2 = i;
 }
 
+/* pick_2_random_numbers()  */
+
+static int pick_2_random_numbers(int n, int *i, int *j)
+{
+    *i = n * ran1();
+    while ((*j = n * ran1()) == *i);
+
+    return (0);
+}
+
 /****  chrom_links(c): returns the number of chrom_links between beginning and end of chrom **/
 
-int chrom_links(int c)
+static int chrom_links(int c)
 {
     int ns;
 

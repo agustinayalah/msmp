@@ -112,32 +112,31 @@ struct params pars;
 
 // Prototypes
 
-int generate_sample(char **list, double *pprobss, double *ptmrca, double *pttot);
-void count_nodes(struct node *ptree, int nsam);
-void bigger_list(int nsam, char **list);
-char **cmatrix(int nsam, int len);
-void locate(int n, double beg, double len, double *ptr);
+static int generate_sample(char **list, double *pprobss, double *ptmrca, double *pttot);
+static void count_nodes(struct node *ptree, int nsam);
+static void bigger_list(int nsam, char **list);
+static char **cmatrix(int nsam, int len);
+static void locate(int n, double beg, double len, double *ptr);
 
-void getpars(int argc, char *argv[], int *phowmany);
-void argcheck(int arg, int argc, char *argv[]);
-void usage(void);
-void add_to_event_list(struct devent *pt, struct devent *elist);
-void free_event_list(struct devent *pt, int npop);
-void make_gametes(int nsam, int mfreq, struct node *ptree, double tt, int newsites, int ns, char **list);
-double tree_time(struct node *ptree, int nsam);
-double tree_time_mfreq(struct node *ptree, int nsam, int mfreq);
-void print_tree(struct node *ptree, int nsam);
-void print_parenthesis(struct node *ptree, int *left_child, int *right_child, int noden);
-int pick_branch(int nsam, struct node *ptree, double tt);
-int pick_branch_freq(int nsam, int mfreq, struct node *ptree, double tt);
-int is_descendant(struct node *ptree, int tip, int node);
-int pick_2_random_numbers(int n, int *i, int *j);
-void ordran(int n, double pbuf[]);
-void multinomial(int n, int nclass, double p[], int rv[]);
-void order(int n, double pbuf[]);
-void ranvec(int n, double pbuf[]);
-int poisso(double u);
-double gasdev(double m, double v);
+static void getpars(int argc, char *argv[], int *phowmany);
+static void argcheck(int arg, int argc, char *argv[]);
+static void usage(void);
+static void add_to_event_list(struct devent *pt, struct devent *elist);
+static void free_event_list(struct devent *pt, int npop);
+static void make_gametes(int nsam, int mfreq, struct node *ptree, double tt, int newsites, int ns, char **list);
+static double tree_time(struct node *ptree, int nsam);
+static double tree_time_mfreq(struct node *ptree, int nsam, int mfreq);
+static void print_tree(struct node *ptree, int nsam);
+static void print_parenthesis(struct node *ptree, int *left_child, int *right_child, int noden);
+static int pick_branch(int nsam, struct node *ptree, double tt);
+static int pick_branch_freq(int nsam, int mfreq, struct node *ptree, double tt);
+static int is_descendant(struct node *ptree, int tip, int node);
+static void ordran(int n, double pbuf[]);
+static void multinomial(int n, int nclass, double p[], int rv[]);
+static void order(int n, double pbuf[]);
+static void ranvec(int n, double pbuf[]);
+static int poisso(double u);
+static double gasdev(double m, double v);
 
 int main(int argc, char *argv[])
 {
@@ -261,7 +260,7 @@ int main(int argc, char *argv[])
  *	@return	ns : Cantidad de sitios segregantes
  *
  */
-int generate_sample(char **list, double *pprobss, double *ptmrca, double *pttot)
+static int generate_sample(char **list, double *pprobss, double *ptmrca, double *pttot)
 {
     int nsegs, i, k, seg, ns, start, end, len, segsit;
     struct segl *seglst;
@@ -395,7 +394,7 @@ int generate_sample(char **list, double *pprobss, double *ptmrca, double *pttot)
     return (ns);
 }
 
-void count_nodes(struct node *ptree, int nsam)
+static void count_nodes(struct node *ptree, int nsam)
 {
     int i;
     for (i = 0; i < nsam; i++)
@@ -406,7 +405,7 @@ void count_nodes(struct node *ptree, int nsam)
         (ptree + ((ptree + i)->abv))->ndes += (ptree + i)->ndes;
 }
 
-void bigger_list(int nsam, char **list)
+static void bigger_list(int nsam, char **list)
 {
     int i;
     /*  fprintf(stderr,"maxsites: %d\n",maxsites);  */
@@ -429,7 +428,7 @@ void bigger_list(int nsam, char **list)
  *                    o puede usar una cantidad maxima fijada de antemano (maxsites)
  *  @return matrix : Puntero a la matríz de caracteres
  */
-char **cmatrix(int nsam, int len)
+static char **cmatrix(int nsam, int len)
 {
     int i;
     char **matrix;
@@ -443,7 +442,7 @@ char **cmatrix(int nsam, int len)
     return (matrix);
 }
 
-void locate(int n, double beg, double len, double *ptr)
+static void locate(int n, double beg, double len, double *ptr)
 {
     int i;
     ordran(n, ptr);
@@ -463,7 +462,7 @@ void locate(int n, double beg, double len, double *ptr)
  *	@param[out]	phowmany : Cantidad de repeticiones sobre un mismo conjunto de muestras a simular
  *
  */
-void getpars(int argc, char *argv[], int *phowmany)
+static void getpars(int argc, char *argv[], int *phowmany)
 {
     int arg, i, j, sum, pop, argstart, npop, npop2, pop2;
     double migr, mij, psize, palpha;
@@ -871,7 +870,7 @@ void getpars(int argc, char *argv[], int *phowmany)
     }
 }
 
-void argcheck(int arg, int argc, char *argv[])
+static void argcheck(int arg, int argc, char *argv[])
 {
     if ((arg >= argc) || (argv[arg][0] == '-')) {
         fprintf(stderr, "not enough arguments after %s\n", argv[arg - 1]);
@@ -880,7 +879,7 @@ void argcheck(int arg, int argc, char *argv[])
     }
 }
 
-void usage()
+static void usage()
 {
     fprintf(stderr, "usage: ms nsam howmany \n");
     fprintf(stderr, "  Options: \n");
@@ -931,7 +930,7 @@ void usage()
     exit(1);
 }
 
-void add_to_event_list(struct devent *pt, struct devent *elist)
+static void add_to_event_list(struct devent *pt, struct devent *elist)
 {
     struct devent *plast, *pevent, *ptemp;
 
@@ -945,7 +944,7 @@ void add_to_event_list(struct devent *pt, struct devent *elist)
     pt->nextde = ptemp;
 }
 
-void free_event_list(struct devent *pt, int npop)
+static void free_event_list(struct devent *pt, int npop)
 {
     struct devent *next;
     int pop;
@@ -970,7 +969,7 @@ void free_event_list(struct devent *pt, int npop)
 #define STATE1 '1'
 #define STATE2 '0'
 
-void make_gametes(int nsam, int mfreq, struct node *ptree, double tt, int newsites, int ns,
+static void make_gametes(int nsam, int mfreq, struct node *ptree, double tt, int newsites, int ns,
                   char **list)
 {
     int tip, j, node;
@@ -991,7 +990,7 @@ void make_gametes(int nsam, int mfreq, struct node *ptree, double tt, int newsit
 
 /***  tree_time.c : Returns the total time in the tree, *ptree, with nsam tips. **/
 
-double tree_time(struct node *ptree, int nsam)
+static double tree_time(struct node *ptree, int nsam)
 {
     double t;
     int i;
@@ -1005,7 +1004,7 @@ double tree_time(struct node *ptree, int nsam)
     return (t);
 }
 
-double tree_time_mfreq(struct node *ptree, int nsam, int mfreq)
+static double tree_time_mfreq(struct node *ptree, int nsam, int mfreq)
 {
     double t;
     int i;
@@ -1020,7 +1019,7 @@ double tree_time_mfreq(struct node *ptree, int nsam, int mfreq)
     return (t);
 }
 
-void print_tree(struct node *ptree, int nsam)
+static void print_tree(struct node *ptree, int nsam)
 {
     int i, *left_child, *right_child;
 
@@ -1044,7 +1043,7 @@ void print_tree(struct node *ptree, int nsam)
 }
 
 // Función para imprimir los arboles en formato de Newick
-void print_parenthesis(struct node *ptree, int *left_child, int *right_child, int noden)
+static void print_parenthesis(struct node *ptree, int *left_child, int *right_child, int noden)
 {
     double time;
 
@@ -1069,7 +1068,7 @@ void print_parenthesis(struct node *ptree, int *left_child, int *right_child, in
               a particular branch is proportional to its duration. tt is total
               time in tree.   ****/
 
-int pick_branch(int nsam, struct node *ptree, double tt)
+static int pick_branch(int nsam, struct node *ptree, double tt)
 {
     double x, y;
     int i;
@@ -1091,7 +1090,7 @@ int pick_branch(int nsam, struct node *ptree, double tt)
     return (2 * nsam - 3); /* changed 4 Feb 2010 */
 }
 
-int pick_branch_freq(int nsam, int mfreq, struct node *ptree, double tt)
+static int pick_branch_freq(int nsam, int mfreq, struct node *ptree, double tt)
 {
     double x, y;
     int i, lastbranch = 0;
@@ -1118,7 +1117,7 @@ int pick_branch_freq(int nsam, int mfreq, struct node *ptree, double tt)
 
 /****  is_descendant : returns 1 if tip is a descendant of node in *ptree, otherwise 0. **/
 
-int is_descendant(struct node *ptree, int tip, int node)
+static int is_descendant(struct node *ptree, int tip, int node)
 {
     int k;
 
@@ -1132,26 +1131,16 @@ int is_descendant(struct node *ptree, int tip, int node)
     }
 }
 
-/* pick_2_random_numbers()  */
-
-int pick_2_random_numbers(int n, int *i, int *j)
-{
-    *i = n * ran1();
-    while ((*j = n * ran1()) == *i);
-
-    return (0);
-}
-
 /**** ordran.c  ***/
 
-void ordran(int n, double pbuf[])
+static void ordran(int n, double pbuf[])
 {
     ranvec(n, pbuf);
     order(n, pbuf);
     return;
 }
 
-void multinomial(int n, int nclass, double p[], int rv[])
+static void multinomial(int n, int nclass, double p[], int rv[])
 {
     double x, s;
     int i, j;
@@ -1170,7 +1159,7 @@ void multinomial(int n, int nclass, double p[], int rv[])
     return;
 }
 
-void order(int n, double pbuf[])
+static void order(int n, double pbuf[])
 {
     int gap, i, j;
     double temp;
@@ -1185,7 +1174,7 @@ void order(int n, double pbuf[])
     return;
 }
 
-void ranvec(int n, double pbuf[])
+static void ranvec(int n, double pbuf[])
 {
     int i;
 
@@ -1196,7 +1185,7 @@ void ranvec(int n, double pbuf[])
     return;
 }
 
-int poisso(double u)
+static int poisso(double u)
 {
     double cump, ru, p;
     int i = 1;
@@ -1223,7 +1212,7 @@ int poisso(double u)
 
 /* a slight modification of crecipes version */
 
-double gasdev(double m, double v)
+static double gasdev(double m, double v)
 {
     static int iset = 0;
     static float gset;

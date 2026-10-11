@@ -52,21 +52,7 @@ struct segl {
     int next;
 };
 
-/*KRT -- prototypes added*/
-void ordran(int n, double pbuf[]);
-void ranvec(int n, double pbuf[]);
-void order(int n, double pbuf[]);
-
-void bigger_list(int nsam, char **list);
-int poisso(double u);
-void locate(int n, double beg, double len, double *ptr);
-void multinomial(int n, int nclass, double p[], int rv[]);
-void usage(void);
-int is_descendant(struct node *ptree, int tip, int node);
-int pick_2_random_numbers(int n, int *i, int *j);
-int crossover(int nsam, int ic, int is);
-int chrom_links(int c);
-void seedit(const char *flag);
-struct segl *simulate_coalescent(struct c_params *cp, int *pnsegs);
-int commandlineseed(char **seeds);
 double ran1(void);
+void seedit(const char *flag);
+int commandlineseed(char **seeds);
+struct segl *simulate_coalescent(struct c_params *cp, int *pnsegs);
