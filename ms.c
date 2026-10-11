@@ -248,7 +248,7 @@ int main(int argc, char *argv[])
 /*
  *	@brief Genera los arboles de coalescencia y aplica las mutaciones.
  *
- *	Invoca a segtre_mig() que guarda en seglst el arbol de coalescencia. Luego en función de las
+ *	Invoca a simulate_coalescent() que guarda en seglst el arbol de coalescencia. Luego en función de las
  *opciones ingresadas, muestra el arbol en formato Newick o muestra el tiempo que le tomó a cada
  *rama hasta coalescer. Por último aplica las mutaciones sobre las ramas de manera aleatoria con
  *make_gametes().
@@ -275,7 +275,7 @@ int generate_sample(char **list, double *pprobss, double *ptmrca, double *pttot)
     nsites = pars.cp.nsites;
     nsinv = 1. / nsites;
 
-    seglst = segtre_mig(&(pars.cp), &nsegs);
+    seglst = simulate_coalescent(&(pars.cp), &nsegs);
 
     nsam = pars.cp.nsam;
     segsitesin = pars.mp.segsitesin;

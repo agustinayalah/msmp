@@ -757,7 +757,7 @@ void pick_2_chrom(int pop, int config[], int *pc1, int *pc2)
 {
     int c1, c2, cs, cb, i, count;
 
-    pick2(config[pop], &c1, &c2);
+    pick_2_random_numbers(config[pop], &c1, &c2);
     cs = (c1 > c2) ? c2 : c1;
     cb = (c1 > c2) ? c1 : c2;
     i = count = 0;
