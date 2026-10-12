@@ -41,6 +41,7 @@
 #define ERROR(message) fprintf(stderr, message), NL, exit(1)
 
 #define SEGINC 80
+#define CHROMOSOME_INC 20
 
 int nchrom, begs, nsegs;
 long nchrom_links;
@@ -330,7 +331,7 @@ struct segl *simulate_coalescent(struct c_params *cp, int *pnsegs)
                 cleft += num * (1.0 - pow(pc, (double)(nsites - 1)));
 
                 if ((nchrom + num) >= maxchr) {
-                    maxchr += 20;
+                    maxchr += CHROMOSOME_INC;
                     chrom =
                         (struct chromo *)realloc(chrom, (unsigned)(maxchr * sizeof(struct chromo)));
                     if (chrom == NULL)
@@ -431,7 +432,7 @@ static void allocate_buffers(int nsam)
 {
     /* Initialization */
     if (chrom == NULL) {
-        maxchr = nsam + 20;
+        maxchr = nsam + CHROMOSOME_INC;
         chrom = (struct chromo *)malloc((unsigned)(maxchr * sizeof(struct chromo)));
         if (chrom == NULL)
             perror("malloc error. segtre");
@@ -607,7 +608,7 @@ static int crossover(int nsam, int ic, int is)
 
     nchrom++;
     if (nchrom >= maxchr) {
-        maxchr += 20;
+        maxchr += CHROMOSOME_INC;
         chrom = (struct chromo *)realloc(chrom, (unsigned)(maxchr * sizeof(struct chromo)));
         if (chrom == NULL)
             perror("malloc error. segtre2");

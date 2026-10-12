@@ -99,7 +99,14 @@ this suggestion.) Changed function definitions, and misc other things to comply 
 #include <stdlib.h>
 #include <string.h>
 
-#define SITESINC 10
+#define SITESINC 10 
+#define TBS_PARAMS_LENGTH 30
+#define PARAM_FILE_ARG_LENGTH 20
+#define MIN_ARGS 4                  // Representa la cantidad mínima de argumentos
+#define FIRST_OPTION_ARG 3          // Representa la posición de la primera opción en los parámetros
+#define OUTPUT_PRECISION 4
+#define MIN_NSITES 2 
+#define MIN_MFREQ 2
 
 unsigned maxsites = SITESINC;
 
@@ -167,7 +174,7 @@ int main(int argc, char *argv[])
     for (i = 0; i < argc; i++)
         printf("%s ", argv[i]);
     for (i = 0; i < argc; i++)
-        tbsparamstrs[i] = (char *)malloc(30 * sizeof(char));
+        tbsparamstrs[i] = (char *)malloc(TBS_PARAMS_LENGTH * sizeof(char));
     for (i = 1; i < argc; i++)
         if (strcmp(argv[i], "tbs") == 0)
             argv[i] = tbsparamstrs[ntbs++];
@@ -535,7 +542,7 @@ static void getpars(int argc, char *argv[], int *phowmany)
     FILE *pf;
 
     if (count == 0) {
-        if (argc < 4) {
+        if (argc < MIN_ARGS) {
             fprintf(stderr, "Too few command line arguments\n");
             usage();
         }
@@ -565,7 +572,7 @@ static void getpars(int argc, char *argv[], int *phowmany)
 
     pars.cp.deventlist = NULL;
 
-    arg = 3;
+    arg = FIRST_OPTION_ARG ;
 
     while (arg < argc) {
         if (argv[arg][0] != '-') {
@@ -588,13 +595,13 @@ static void getpars(int argc, char *argv[], int *phowmany)
             arg++;
             argc++;
             argv = (char **)malloc((unsigned)(argc + 1) * sizeof(char *));
-            argv[arg] = (char *)malloc((unsigned)(20 * sizeof(char)));
+            argv[arg] = (char *)malloc((unsigned)(PARAM_FILE_ARG_LENGTH * sizeof(char)));
             argstart = arg;
             while (fscanf(pf, " %s", argv[arg]) != EOF) {
                 arg++;
                 argc++;
                 argv = (char **)realloc(argv, (unsigned)argc * sizeof(char *));
-                argv[arg] = (char *)malloc((unsigned)(20 * sizeof(char)));
+                argv[arg] = (char *)malloc((unsigned)(PARAM_FILE_ARG_LENGTH * sizeof(char)));
             }
             fclose(pf);
             argc--;
@@ -606,7 +613,7 @@ static void getpars(int argc, char *argv[], int *phowmany)
             pars.cp.r = atof(argv[arg++]);
             argcheck(arg, argc, argv);
             pars.cp.nsites = atoi(argv[arg++]);
-            if (pars.cp.nsites < 2) {
+            if (pars.cp.nsites < MIN_NSITES) {
                 fprintf(stderr, "with -r option must specify both rec_rate and nsites>1\n");
                 usage();
             }
@@ -648,7 +655,7 @@ static void getpars(int argc, char *argv[], int *phowmany)
             arg++;
             argcheck(arg, argc, argv);
             pars.mp.mfreq = atoi(argv[arg++]);
-            if ((pars.mp.mfreq < 2) || (pars.mp.mfreq > pars.cp.nsam / 2)) {
+            if ((pars.mp.mfreq < MIN_MFREQ) || (pars.mp.mfreq > pars.cp.nsam / 2)) {
                 fprintf(stderr, " mfreq must be >= 2 and <= nsam/2.\n");
                 usage();
             }
@@ -760,7 +767,7 @@ static void getpars(int argc, char *argv[], int *phowmany)
 static void set_default_params(void)
 {
     pars.commandlineseedflag = 0;
-    pars.output_precision = 4;
+    pars.output_precision = OUTPUT_PRECISION;
     pars.cp.r = pars.mp.theta = pars.cp.f = 0.0;
     pars.cp.track_len = 0.;
     pars.cp.npop = 1;
@@ -779,7 +786,7 @@ static void set_default_params(void)
     (pars.cp.size)[0] = 1.0;
     pars.cp.alphag = (double *)malloc((unsigned)((pars.cp.npop) * sizeof(double)));
     (pars.cp.alphag)[0] = 0.0;
-    pars.cp.nsites = 2;
+    pars.cp.nsites = MIN_NSITES;
 }
 
 static void calc_matrix_diagonal(double **mat, int npop)
@@ -1052,8 +1059,8 @@ static void free_event_list(struct devent *pt, int npop)
  *
  *****************************************************************************/
 
-#define STATE1 '1'
-#define STATE2 '0'
+#define STATE1 '1' // Mutación
+#define STATE2 '0' // Conservación del gen
 
 static void make_gametes(int nsam, int mfreq, struct node *ptree, double tt, int newsites, int ns,
                   char **list)
