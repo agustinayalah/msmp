@@ -121,7 +121,22 @@ static void locate(int n, double beg, double len, double *ptr);
 static void getpars(int argc, char *argv[], int *phowmany);
 static void argcheck(int arg, int argc, char *argv[]);
 static void usage(void);
-static void add_to_event_list(struct devent *pt, struct devent *elist);
+static void insert_event_sorted(struct devent *pt);
+static char **allocate_buffers(void);
+static void print_sample(FILE *pf, char **list, int segsites, double probss);
+static int segment_end(struct segl *seglst, int seg, int k, int nsegs, int nsites);
+static double segment_tree_time(struct node *ptree, int nsam, int mfreq);
+static void print_segment_trees(struct segl *seglst, int nsegs);
+static void compute_tree_times(struct segl *seglst, int nsegs, double *ptmrca, double *pttot);
+static int mutate_with_theta(struct segl *seglst, int nsegs, char **list);
+static int mutate_fixed_segsites(struct segl *seglst, int nsegs, char **list, double *pprobss);
+static void ensure_sites_capacity(int needed, int nsam, char **list);
+static void set_default_params(void);
+static int parse_island_model(int arg, int argc, char *argv[], int *pnpop);
+static int parse_demographic_event(int arg, int argc, char *argv[]);
+static void calc_matrix_diagonal(double **mat, int npop);
+static double branch_length(struct node *ptree, int i); 
+static double random_age_in_branch(struct node *ptree, int i);  
 static void free_event_list(struct devent *pt, int npop);
 static void make_gametes(int nsam, int mfreq, struct node *ptree, double tt, int newsites, int ns, char **list);
 static double tree_time(struct node *ptree, int nsam);
@@ -140,7 +155,7 @@ static double gasdev(double m, double v);
 
 int main(int argc, char *argv[])
 {
-    int i, k, howmany, segsites, afreq;
+    int i, k, howmany, segsites;
     char **list, **tbsparamstrs;
     FILE *pf;
     double probss, tmrca, ttot;
@@ -172,20 +187,7 @@ int main(int argc, char *argv[])
 
     pf = stdout;
 
-    if (pars.mp.segsitesin == 0) {                  // Tasa de mutación fija con -t theta
-        list = cmatrix(pars.cp.nsam, maxsites + 1);
-        posit = (double *)malloc((unsigned)(maxsites * sizeof(double)));    // posit y agevec son los metadatos de los segmentos como la
-        agevec = (double *)malloc((unsigned)(maxsites * sizeof(double)));   // posición donde ocurrió la mutación (rango de 0 a 1) o la edad
-    } else {                                        // Sitios segregantes fijos -s segsites
-        list = cmatrix(pars.cp.nsam, pars.mp.segsitesin + 1);
-        posit = (double *)malloc((unsigned)(pars.mp.segsitesin * sizeof(double)));
-        agevec = (double *)malloc((unsigned)(pars.mp.segsitesin * sizeof(double)));
-        if (pars.mp.theta > 0.0) {
-            segfac = 1.0;
-            for (i = pars.mp.segsitesin; i > 1; i--)
-                segfac *= i;
-        }
-    }
+    list = allocate_buffers();
 
     while (howmany - count++) {
         if ((ntbs > 0) && (count > 1)) {
@@ -211,33 +213,7 @@ int main(int argc, char *argv[])
         if (pars.mp.timeflag)                                      
             fprintf(pf, "time:\t%lf\t%lf\n", tmrca, ttot);
 
-        if ((segsites > 0) || (pars.mp.theta > 0.0)) {              // Impresión de los resultados
-            if ((pars.mp.segsitesin > 0) && (pars.mp.theta > 0.0))
-                fprintf(pf, "prob: %g\n", probss);
-            fprintf(pf, "segsites: %d\n", segsites);
-            if (segsites > 0)
-                fprintf(pf, "positions: ");
-            for (i = 0; i < segsites; i++)
-                fprintf(pf, "%6.*lf ", pars.output_precision, posit[i]);
-            fprintf(pf, "\n");
-            if ((segsites > 0) && pars.mp.ageflag) {
-                fprintf(pf, "allele ages: ");
-                for (i = 0; i < segsites; i++)
-                    fprintf(pf, "%6.*lf ", pars.output_precision, agevec[i]);
-                fprintf(pf, "\n");
-                fprintf(pf, "allele freqs: ");
-                for (i = 0; i < segsites; i++) {
-                    for (k = afreq = 0; k < pars.cp.nsam; k++)
-                        afreq += ((list[k][i] == '1') ? 1 : 0);
-                    fprintf(pf, "%d ", afreq);
-                }
-                fprintf(pf, "\n");
-            }
-            if (segsites > 0)
-                for (i = 0; i < pars.cp.nsam; i++) {
-                    fprintf(pf, "%s\n", list[i]);
-                }
-        }
+        print_sample(pf, list, segsites, probss);
     }
 
     if (!pars.commandlineseedflag)
@@ -262,136 +238,226 @@ int main(int argc, char *argv[])
  */
 static int generate_sample(char **list, double *pprobss, double *ptmrca, double *pttot)
 {
-    int nsegs, i, k, seg, ns, start, end, len, segsit;
+    int nsegs, i, ns = 0;
     struct segl *seglst;
-    double nsinv, tseg, tt;
-    double *pk;
-    int *ss;
-    int segsitesin, nsites;
-    double theta, es;
-    int nsam, mfreq;
-
-    nsites = pars.cp.nsites;
-    nsinv = 1. / nsites;
 
     seglst = simulate_coalescent(&(pars.cp), &nsegs);
 
-    nsam = pars.cp.nsam;
-    segsitesin = pars.mp.segsitesin;
-    theta = pars.mp.theta;
-    mfreq = pars.mp.mfreq;
+    if (pars.mp.treeflag)
+        print_segment_trees(seglst, nsegs);
 
-    if (pars.mp.treeflag) {
-        ns = 0;
-        for (seg = 0, k = 0; k < nsegs; seg = seglst[seg].next, k++) {
-            if ((pars.cp.r > 0.0) || (pars.cp.f > 0.0)) {
-                end = (k < nsegs - 1 ? seglst[seglst[seg].next].beg - 1 : nsites - 1);
-                start = seglst[seg].beg;
-                len = end - start + 1;
-                fprintf(stdout, "[%d]", len);
-            }
-            print_tree(seglst[seg].ptree, nsam);
-            if ((segsitesin == 0) && (theta == 0.0) && (pars.mp.timeflag == 0))
-                free(seglst[seg].ptree);
-        }
-    }
+    if (pars.mp.timeflag)
+        compute_tree_times(seglst, nsegs, ptmrca, pttot);
 
-    if (pars.mp.timeflag) {
-        tt = 0.0;
-        for (seg = 0, k = 0; k < nsegs; seg = seglst[seg].next, k++) {
-            if (mfreq > 1)
-                count_nodes(seglst[seg].ptree, nsam);
-            end = (k < nsegs - 1 ? seglst[seglst[seg].next].beg - 1 : nsites - 1);
-            start = seglst[seg].beg;
-            if ((nsegs == 1) || ((start <= nsites / 2) && (end >= nsites / 2)))
-                *ptmrca = (seglst[seg].ptree + 2 * nsam - 2)->time;
-            len = end - start + 1;
-            tseg = len / (double)nsites;
-            if (mfreq == 1)
-                tt += tree_time(seglst[seg].ptree, nsam) * tseg;
-            else
-                tt += tree_time_mfreq(seglst[seg].ptree, nsam, mfreq) * tseg;
-            if ((segsitesin == 0) && (theta == 0.0))
-                free(seglst[seg].ptree);
-        }
-        *pttot = tt;
-    }
+    if ((pars.mp.segsitesin == 0) && (pars.mp.theta > 0.0)) // Si se pasa theta sin segsites fijos
+        ns = mutate_with_theta(seglst, nsegs, list);
+    else if (pars.mp.segsitesin > 0) // Si se pasa con segsites fijos
+        ns = mutate_fixed_segsites(seglst, nsegs, list, pprobss);
 
-    if ((segsitesin == 0) && (theta > 0.0)) { // Si se pasa theta sin segsites fijos
-        ns = 0;
-        for (seg = 0, k = 0; k < nsegs; seg = seglst[seg].next, k++) {
-            if (mfreq > 1)
-                count_nodes(seglst[seg].ptree, nsam);
-            end = (k < nsegs - 1 ? seglst[seglst[seg].next].beg - 1 : nsites - 1);
-            start = seglst[seg].beg;
-            len = end - start + 1;
-            tseg = len * (theta / nsites);
-            if (mfreq == 1)
-                tt = tree_time(seglst[seg].ptree, nsam);
-            else
-                tt = tree_time_mfreq(seglst[seg].ptree, nsam, mfreq);
-            segsit = poisso(tseg * tt);
-            if ((segsit + ns) >= maxsites) {
-                maxsites = segsit + ns + SITESINC;
-                posit = (double *)realloc(posit, maxsites * sizeof(double));
-                agevec = (double *)realloc(agevec, maxsites * sizeof(double));
-                bigger_list(nsam, list);
-            }
-            make_gametes(nsam, mfreq, seglst[seg].ptree, tt, segsit, ns, list);
-            free(seglst[seg].ptree);
-            locate(segsit, start * nsinv, len * nsinv, posit + ns);
-            ns += segsit;
-        }
-    } else if (segsitesin > 0) { // Si se pasa con segsites fijos
-
-        pk = (double *)malloc((unsigned)(nsegs * sizeof(double)));
-        ss = (int *)malloc((unsigned)(nsegs * sizeof(int)));
-        if ((pk == NULL) || (ss == NULL))
-            perror("malloc error. generate_sample.2");
-
-        tt = 0.0;
-        for (seg = 0, k = 0; k < nsegs; seg = seglst[seg].next, k++) {
-            if (mfreq > 1)
-                count_nodes(seglst[seg].ptree, nsam);
-            end = (k < nsegs - 1 ? seglst[seglst[seg].next].beg - 1 : nsites - 1);
-            start = seglst[seg].beg;
-            len = end - start + 1;
-            tseg = len / (double)nsites;
-            if (mfreq == 1)
-                pk[k] = tree_time(seglst[seg].ptree, nsam) * tseg;
-            else
-                pk[k] = tree_time_mfreq(seglst[seg].ptree, nsam, mfreq) * tseg;
-            tt += pk[k];
-        }
-        if (theta > 0.0) {
-            es = theta * tt;
-            *pprobss = exp(-es) * pow(es, (double)segsitesin) / segfac;
-        }
-        if (tt > 0.0) {
-            for (k = 0; k < nsegs; k++)
-                pk[k] /= tt;
-            multinomial(segsitesin, nsegs, pk, ss);
-        } else
-            for (k = 0; k < nsegs; k++)
-                ss[k] = 0;
-        ns = 0;
-        for (seg = 0, k = 0; k < nsegs; seg = seglst[seg].next, k++) {
-            end = (k < nsegs - 1 ? seglst[seglst[seg].next].beg - 1 : nsites - 1);
-            start = seglst[seg].beg;
-            len = end - start + 1;
-            tseg = len / (double)nsites;
-            make_gametes(nsam, mfreq, seglst[seg].ptree, tt * pk[k] / tseg, ss[k], ns, list);
-
-            free(seglst[seg].ptree);
-            locate(ss[k], start * nsinv, len * nsinv, posit + ns);
-            ns += ss[k];
-        }
-        free(pk);
-        free(ss);
-    }
-    for (i = 0; i < nsam; i++)
+    for (i = 0; i < pars.cp.nsam; i++)
         list[i][ns] = '\0';
     return (ns);
+}
+
+// Imprime el árbol, se activa con la opción -T 
+static void print_segment_trees(struct segl *seglst, int nsegs)
+{
+    int seg, k, start, end, len;
+    int nsites = pars.cp.nsites, nsam = pars.cp.nsam;
+
+    for (seg = 0, k = 0; k < nsegs; seg = seglst[seg].next, k++) {
+        if ((pars.cp.r > 0.0) || (pars.cp.f > 0.0)) {
+            end = segment_end(seglst, seg, k, nsegs, nsites);
+            start = seglst[seg].beg;
+            len = end - start + 1;
+            fprintf(stdout, "[%d]", len);
+        }
+        print_tree(seglst[seg].ptree, nsam);
+        if ((pars.mp.segsitesin == 0) && (pars.mp.theta == 0.0) && (pars.mp.timeflag == 0))
+            free(seglst[seg].ptree);
+    }
+}
+
+// Usando la opción -L calcula el tiempo al MRCA y la longitud total del árbol 
+static void compute_tree_times(struct segl *seglst, int nsegs, double *ptmrca, double *pttot)
+{
+    int seg, k, start, end, len;
+    int nsites = pars.cp.nsites, nsam = pars.cp.nsam, mfreq = pars.mp.mfreq;
+    double tseg, tt = 0.0;
+
+    for (seg = 0, k = 0; k < nsegs; seg = seglst[seg].next, k++) {
+        if (mfreq > 1)
+            count_nodes(seglst[seg].ptree, nsam);
+        end = segment_end(seglst, seg, k, nsegs, nsites);
+        start = seglst[seg].beg;
+        if ((nsegs == 1) || ((start <= nsites / 2) && (end >= nsites / 2)))
+            *ptmrca = (seglst[seg].ptree + 2 * nsam - 2)->time;
+        len = end - start + 1;
+        tseg = len / (double)nsites;
+        tt += segment_tree_time(seglst[seg].ptree, nsam, mfreq) * tseg;
+        if ((pars.mp.segsitesin == 0) && (pars.mp.theta == 0.0))
+            free(seglst[seg].ptree);
+    }
+    *pttot = tt;
+}
+
+// Aplica mutaciones con tasa theta (opción -t) y devuelve la cantidad de sitios segregantes 
+static int mutate_with_theta(struct segl *seglst, int nsegs, char **list)
+{
+    int seg, k, start, end, len, segsit, ns = 0;
+    int nsites = pars.cp.nsites, nsam = pars.cp.nsam, mfreq = pars.mp.mfreq;
+    double nsinv = 1. / nsites, theta = pars.mp.theta, tseg, tt;
+
+    for (seg = 0, k = 0; k < nsegs; seg = seglst[seg].next, k++) {
+        if (mfreq > 1)
+            count_nodes(seglst[seg].ptree, nsam);
+        end = segment_end(seglst, seg, k, nsegs, nsites);
+        start = seglst[seg].beg;
+        len = end - start + 1;
+        tseg = len * (theta / nsites);
+        tt = segment_tree_time(seglst[seg].ptree, nsam, mfreq);
+        segsit = poisso(tseg * tt);
+        ensure_sites_capacity(segsit + ns, nsam, list);
+        make_gametes(nsam, mfreq, seglst[seg].ptree, tt, segsit, ns, list);
+        free(seglst[seg].ptree);
+        locate(segsit, start * nsinv, len * nsinv, posit + ns);
+        ns += segsit;
+    }
+    return (ns);
+}
+
+// Aplica una cantidad fija de sitios segregantes entre los segmentos (opción -s) y retorna los segsites
+static int mutate_fixed_segsites(struct segl *seglst, int nsegs, char **list, double *pprobss)
+{
+    int seg, k, start, end, len, ns;
+    int nsites = pars.cp.nsites, nsam = pars.cp.nsam, mfreq = pars.mp.mfreq;
+    int segsitesin = pars.mp.segsitesin;
+    double nsinv = 1. / nsites, theta = pars.mp.theta, tseg, tt, es;
+    double *pk;
+    int *ss;
+
+    pk = (double *)malloc((unsigned)(nsegs * sizeof(double)));
+    ss = (int *)malloc((unsigned)(nsegs * sizeof(int)));
+    if ((pk == NULL) || (ss == NULL))
+        perror("malloc error. generate_sample.2");
+
+    tt = 0.0;
+    for (seg = 0, k = 0; k < nsegs; seg = seglst[seg].next, k++) {
+        if (mfreq > 1)
+            count_nodes(seglst[seg].ptree, nsam);
+        end = segment_end(seglst, seg, k, nsegs, nsites);
+        start = seglst[seg].beg;
+        len = end - start + 1;
+        tseg = len / (double)nsites;
+        pk[k] = segment_tree_time(seglst[seg].ptree, nsam, mfreq) * tseg;
+        tt += pk[k];
+    }
+    if (theta > 0.0) {
+        es = theta * tt;
+        *pprobss = exp(-es) * pow(es, (double)segsitesin) / segfac;
+    }
+    if (tt > 0.0) {
+        for (k = 0; k < nsegs; k++)
+            pk[k] /= tt;
+        multinomial(segsitesin, nsegs, pk, ss);
+    } else
+        for (k = 0; k < nsegs; k++)
+            ss[k] = 0;
+    ns = 0;
+    for (seg = 0, k = 0; k < nsegs; seg = seglst[seg].next, k++) {
+        end = segment_end(seglst, seg, k, nsegs, nsites);
+        start = seglst[seg].beg;
+        len = end - start + 1;
+        tseg = len / (double)nsites;
+        make_gametes(nsam, mfreq, seglst[seg].ptree, tt * pk[k] / tseg, ss[k], ns, list);
+
+        free(seglst[seg].ptree);
+        locate(ss[k], start * nsinv, len * nsinv, posit + ns);
+        ns += ss[k];
+    }
+    free(pk);
+    free(ss);
+    return (ns);
+}
+
+static int segment_end(struct segl *seglst, int seg, int k, int nsegs, int nsites)
+{
+    return (k < nsegs - 1 ? seglst[seglst[seg].next].beg - 1 : nsites - 1);
+}
+
+static double segment_tree_time(struct node *ptree, int nsam, int mfreq)
+{
+    if (mfreq == 1)
+        return tree_time(ptree, nsam);
+    else
+        return tree_time_mfreq(ptree, nsam, mfreq);
+}
+
+static void ensure_sites_capacity(int needed, int nsam, char **list)
+{
+    if (needed >= maxsites) {
+        maxsites = needed + SITESINC;
+        posit = (double *)realloc(posit, maxsites * sizeof(double));
+        agevec = (double *)realloc(agevec, maxsites * sizeof(double));
+        bigger_list(nsam, list);
+    }
+}
+
+// Reserva espacio para la matriz de gametos y los vectores de posiciones y edades 
+static char **allocate_buffers(void)
+{
+    int i;
+    char **list;
+
+    if (pars.mp.segsitesin == 0) {                  // Tasa de mutación con -t theta
+        list = cmatrix(pars.cp.nsam, maxsites + 1);
+        posit = (double *)malloc((unsigned)(maxsites * sizeof(double)));    // posit y agevec son los metadatos de los segmentos como la
+        agevec = (double *)malloc((unsigned)(maxsites * sizeof(double)));   // posición donde ocurrió la mutación (rango de 0 a 1) o la edad
+    } else {                                        // Sitios segregantes fijos -s segsites
+        list = cmatrix(pars.cp.nsam, pars.mp.segsitesin + 1);
+        posit = (double *)malloc((unsigned)(pars.mp.segsitesin * sizeof(double)));
+        agevec = (double *)malloc((unsigned)(pars.mp.segsitesin * sizeof(double)));
+        if (pars.mp.theta > 0.0) {
+            segfac = 1.0;
+            for (i = pars.mp.segsitesin; i > 1; i--)
+                segfac *= i;
+        }
+    }
+    return (list);
+}
+
+// Imprime los resultados de una réplica como los segsites, posiciones, edades y gametos 
+static void print_sample(FILE *pf, char **list, int segsites, double probss)
+{
+    int i, k, afreq;
+
+    if ((segsites > 0) || (pars.mp.theta > 0.0)) {
+        if ((pars.mp.segsitesin > 0) && (pars.mp.theta > 0.0))
+            fprintf(pf, "prob: %g\n", probss);
+        fprintf(pf, "segsites: %d\n", segsites);
+        if (segsites > 0)
+            fprintf(pf, "positions: ");
+        for (i = 0; i < segsites; i++)
+            fprintf(pf, "%6.*lf ", pars.output_precision, posit[i]);
+        fprintf(pf, "\n");
+        if ((segsites > 0) && pars.mp.ageflag) {
+            fprintf(pf, "allele ages: ");
+            for (i = 0; i < segsites; i++)
+                fprintf(pf, "%6.*lf ", pars.output_precision, agevec[i]);
+            fprintf(pf, "\n");
+            fprintf(pf, "allele freqs: ");
+            for (i = 0; i < segsites; i++) {
+                for (k = afreq = 0; k < pars.cp.nsam; k++)
+                    afreq += ((list[k][i] == '1') ? 1 : 0);
+                fprintf(pf, "%d ", afreq);
+            }
+            fprintf(pf, "\n");
+        }
+        if (segsites > 0)
+            for (i = 0; i < pars.cp.nsam; i++) {
+                fprintf(pf, "%s\n", list[i]);
+            }
+    }
 }
 
 static void count_nodes(struct node *ptree, int nsam)
@@ -464,11 +530,9 @@ static void locate(int n, double beg, double len, double *ptr)
  */
 static void getpars(int argc, char *argv[], int *phowmany)
 {
-    int arg, i, j, sum, pop, argstart, npop, npop2, pop2;
-    double migr, mij, psize, palpha;
-    struct devent *ptemp, *pt;
+    int arg, i, j, sum, pop, argstart, npop, pop2;
+    double mij, psize, palpha;
     FILE *pf;
-    char ch3;
 
     if (count == 0) {
         if (argc < 4) {
@@ -492,27 +556,8 @@ static void getpars(int argc, char *argv[], int *phowmany)
             usage();
         }
 
-        pars.commandlineseedflag = 0;
-        pars.output_precision = 4;
-        pars.cp.r = pars.mp.theta = pars.cp.f = 0.0;
-        pars.cp.track_len = 0.;
-        pars.cp.npop = npop = 1;
-        pars.cp.mig_mat = (double **)malloc((unsigned)sizeof(double *));
-        pars.cp.mig_mat[0] = (double *)malloc((unsigned)sizeof(double));
-        pars.cp.mig_mat[0][0] = 0.0;
-        pars.mp.segsitesin = 0;
-        pars.mp.treeflag = 0;
-        pars.mp.timeflag = 0;
-        pars.mp.ageflag = 0;
-        pars.mp.mfreq = 1;
-        pars.cp.config = (int *)malloc((unsigned)((pars.cp.npop + 1) * sizeof(int)));
-        /* adna */
-        (pars.cp.config)[0] = pars.cp.nsamin;
-        pars.cp.size = (double *)malloc((unsigned)(pars.cp.npop * sizeof(double)));
-        (pars.cp.size)[0] = 1.0;
-        pars.cp.alphag = (double *)malloc((unsigned)((pars.cp.npop) * sizeof(double)));
-        (pars.cp.alphag)[0] = 0.0;
-        pars.cp.nsites = 2;
+        set_default_params();
+        npop = pars.cp.npop;
     } else {
         npop = pars.cp.npop;
         free_event_list(pars.cp.deventlist, npop);
@@ -621,54 +666,7 @@ static void getpars(int argc, char *argv[], int *phowmany)
             arg++;
             break;
         case 'I':
-            arg++;
-            if (count == 0) {
-                argcheck(arg, argc, argv);
-                pars.cp.npop = atoi(argv[arg]);
-                pars.cp.config =
-                    (int *)realloc(pars.cp.config, (unsigned)(pars.cp.npop * sizeof(int)));
-                npop = pars.cp.npop;
-            }
-            arg++;
-            for (i = 0; i < pars.cp.npop; i++) {
-                argcheck(arg, argc, argv);
-                pars.cp.config[i] = atoi(argv[arg++]);
-            }
-            if (count == 0) {
-                pars.cp.mig_mat = (double **)realloc(pars.cp.mig_mat,
-                                                     (unsigned)(pars.cp.npop * sizeof(double *)));
-
-                pars.cp.mig_mat[0] = (double *)realloc(pars.cp.mig_mat[0],
-                                                       (unsigned)(pars.cp.npop * sizeof(double)));
-
-                for (i = 1; i < pars.cp.npop; i++)
-                    pars.cp.mig_mat[i] =
-                        (double *)malloc((unsigned)(pars.cp.npop * sizeof(double)));
-
-                pars.cp.size =
-                    (double *)realloc(pars.cp.size, (unsigned)(pars.cp.npop * sizeof(double)));
-
-                pars.cp.alphag =
-                    (double *)realloc(pars.cp.alphag, (unsigned)(pars.cp.npop * sizeof(double)));
-
-                for (i = 1; i < pars.cp.npop; i++) {
-                    (pars.cp.size)[i] = (pars.cp.size)[0];
-                    (pars.cp.alphag)[i] = (pars.cp.alphag)[0];
-                }
-            }
-            if ((arg < argc) && (argv[arg][0] != '-')) {
-                argcheck(arg, argc, argv);
-                migr = atof(argv[arg++]);
-            } else
-                migr = 0.0;
-
-            for (i = 0; i < pars.cp.npop; i++)
-                for (j = 0; j < pars.cp.npop; j++)
-                    pars.cp.mig_mat[i][j] = migr / (pars.cp.npop - 1);
-
-            for (i = 0; i < pars.cp.npop; i++)
-                pars.cp.mig_mat[i][i] = migr;
-
+            arg = parse_island_model(arg, argc, argv, &npop);
             break;
         case 'm':
             if (npop < 2) {
@@ -682,13 +680,7 @@ static void getpars(int argc, char *argv[], int *phowmany)
                         argcheck(arg, argc, argv);
                         pars.cp.mig_mat[pop][pop2] = atof(argv[arg++]);
                     }
-                for (pop = 0; pop < npop; pop++) {
-                    pars.cp.mig_mat[pop][pop] = 0.0;
-                    for (pop2 = 0; pop2 < npop; pop2++) {
-                        if (pop2 != pop)
-                            pars.cp.mig_mat[pop][pop] += pars.cp.mig_mat[pop][pop2];
-                    }
-                }
+                calc_matrix_diagonal(pars.cp.mig_mat, npop);
             } else {
                 arg++;
                 argcheck(arg, argc, argv);
@@ -739,112 +731,7 @@ static void getpars(int argc, char *argv[], int *phowmany)
                 pars.cp.alphag[i] = palpha;
             break;
         case 'e':
-            pt = (struct devent *)malloc(sizeof(struct devent));
-            pt->detype = argv[arg][2];
-            ch3 = argv[arg][3];
-            arg++;
-            argcheck(arg, argc, argv);
-            pt->time = atof(argv[arg++]);
-            pt->nextde = NULL;
-
-            if (pars.cp.deventlist == NULL)
-                pars.cp.deventlist = pt;
-            else if (pt->time < pars.cp.deventlist->time) {
-                ptemp = pars.cp.deventlist;
-                pars.cp.deventlist = pt;
-                pt->nextde = ptemp;
-            } else {
-                add_to_event_list(pt, pars.cp.deventlist);
-            }
-
-            switch (pt->detype) {
-            case 'N':
-                argcheck(arg, argc, argv);
-                pt->paramv = atof(argv[arg++]);
-                break;
-            case 'G':
-                if (arg >= argc) {
-                    fprintf(stderr, "Not enough arg's after -eG.\n");
-                    usage();
-                }
-                pt->paramv = atof(argv[arg++]);
-                break;
-            case 'M':
-                argcheck(arg, argc, argv);
-                pt->paramv = atof(argv[arg++]);
-                break;
-            case 'n':
-                argcheck(arg, argc, argv);
-                pt->popi = atoi(argv[arg++]) - 1;
-                argcheck(arg, argc, argv);
-                pt->paramv = atof(argv[arg++]);
-                break;
-            case 'g':
-                argcheck(arg, argc, argv);
-                pt->popi = atoi(argv[arg++]) - 1;
-                if (arg >= argc) {
-                    fprintf(stderr, "Not enough arg's after -eg.\n");
-                    usage();
-                }
-                pt->paramv = atof(argv[arg++]);
-                break;
-            case 's':
-                argcheck(arg, argc, argv);
-                pt->popi = atoi(argv[arg++]) - 1;
-                argcheck(arg, argc, argv);
-                pt->paramv = atof(argv[arg++]);
-                break;
-            case 'm':
-                if (ch3 == 'a') {
-                    pt->detype = 'a';
-                    argcheck(arg, argc, argv);
-                    npop2 = atoi(argv[arg++]);
-                    pt->mat = (double **)malloc((unsigned)npop2 * sizeof(double *));
-                    for (pop = 0; pop < npop2; pop++) {
-                        (pt->mat)[pop] = (double *)malloc((unsigned)npop2 * sizeof(double));
-                        for (i = 0; i < npop2; i++) {
-                            if (i == pop) {
-                                arg++;
-                            } else {
-                                argcheck(arg, argc, argv);
-                                (pt->mat)[pop][i] = atof(argv[arg++]);
-                            }
-                        }
-                    }
-                    for (pop = 0; pop < npop2; pop++) {
-                        (pt->mat)[pop][pop] = 0.0;
-                        for (pop2 = 0; pop2 < npop2; pop2++) {
-                            if (pop2 != pop)
-                                (pt->mat)[pop][pop] += (pt->mat)[pop][pop2];
-                        }
-                    }
-                } else {
-                    argcheck(arg, argc, argv);
-                    pt->popi = atoi(argv[arg++]) - 1;
-                    argcheck(arg, argc, argv);
-                    pt->popj = atoi(argv[arg++]) - 1;
-                    argcheck(arg, argc, argv);
-                    pt->paramv = atof(argv[arg++]);
-                }
-                break;
-            case 'j':
-                argcheck(arg, argc, argv);
-                pt->popi = atoi(argv[arg++]) - 1;
-                argcheck(arg, argc, argv);
-                pt->popj = atoi(argv[arg++]) - 1;
-                break;
-                /* adna */
-            case 'A':
-                argcheck(arg, argc, argv);
-                pt->popi = atoi(argv[arg++]) - 1;
-                argcheck(arg, argc, argv);
-                pt->num = atoi(argv[arg++]);
-                pars.cp.nsam += pt->num;
-                break;
-            default:
-                fprintf(stderr, "e event\n");
-                usage();
-            }
+            arg = parse_demographic_event(arg, argc, argv);
             break;
         default:
             fprintf(stderr, " option default\n");
@@ -868,6 +755,201 @@ static void getpars(int argc, char *argv[], int *phowmany)
         usage();
         exit(1);
     }
+}
+
+static void set_default_params(void)
+{
+    pars.commandlineseedflag = 0;
+    pars.output_precision = 4;
+    pars.cp.r = pars.mp.theta = pars.cp.f = 0.0;
+    pars.cp.track_len = 0.;
+    pars.cp.npop = 1;
+    pars.cp.mig_mat = (double **)malloc((unsigned)sizeof(double *));
+    pars.cp.mig_mat[0] = (double *)malloc((unsigned)sizeof(double));
+    pars.cp.mig_mat[0][0] = 0.0;
+    pars.mp.segsitesin = 0;
+    pars.mp.treeflag = 0;
+    pars.mp.timeflag = 0;
+    pars.mp.ageflag = 0;
+    pars.mp.mfreq = 1;
+    pars.cp.config = (int *)malloc((unsigned)((pars.cp.npop + 1) * sizeof(int)));
+    /* adna */
+    (pars.cp.config)[0] = pars.cp.nsamin;
+    pars.cp.size = (double *)malloc((unsigned)(pars.cp.npop * sizeof(double)));
+    (pars.cp.size)[0] = 1.0;
+    pars.cp.alphag = (double *)malloc((unsigned)((pars.cp.npop) * sizeof(double)));
+    (pars.cp.alphag)[0] = 0.0;
+    pars.cp.nsites = 2;
+}
+
+static void calc_matrix_diagonal(double **mat, int npop)
+{
+    int pop, pop2;
+
+    for (pop = 0; pop < npop; pop++) {
+        mat[pop][pop] = 0.0;
+        for (pop2 = 0; pop2 < npop; pop2++) {
+            if (pop2 != pop)
+                mat[pop][pop] += mat[pop][pop2];
+        }
+    }
+}
+
+// Procesa la opción -I npop n1 n2 ... [mig_rate] del modelo de islas, recibe en arg la posición de "-I" y devuelve la posición del siguiente argumento
+static int parse_island_model(int arg, int argc, char *argv[], int *pnpop)
+{
+    int i, j;
+    double migr;
+
+    arg++;
+    if (count == 0) {
+        argcheck(arg, argc, argv);
+        pars.cp.npop = atoi(argv[arg]);
+        pars.cp.config =
+            (int *)realloc(pars.cp.config, (unsigned)(pars.cp.npop * sizeof(int)));
+        *pnpop = pars.cp.npop;
+    }
+    arg++;
+    for (i = 0; i < pars.cp.npop; i++) {
+        argcheck(arg, argc, argv);
+        pars.cp.config[i] = atoi(argv[arg++]);
+    }
+    if (count == 0) {
+        pars.cp.mig_mat = (double **)realloc(pars.cp.mig_mat,
+                                             (unsigned)(pars.cp.npop * sizeof(double *)));
+
+        pars.cp.mig_mat[0] = (double *)realloc(pars.cp.mig_mat[0],
+                                               (unsigned)(pars.cp.npop * sizeof(double)));
+
+        for (i = 1; i < pars.cp.npop; i++)
+            pars.cp.mig_mat[i] =
+                (double *)malloc((unsigned)(pars.cp.npop * sizeof(double)));
+
+        pars.cp.size =
+            (double *)realloc(pars.cp.size, (unsigned)(pars.cp.npop * sizeof(double)));
+
+        pars.cp.alphag =
+            (double *)realloc(pars.cp.alphag, (unsigned)(pars.cp.npop * sizeof(double)));
+
+        for (i = 1; i < pars.cp.npop; i++) {
+            (pars.cp.size)[i] = (pars.cp.size)[0];
+            (pars.cp.alphag)[i] = (pars.cp.alphag)[0];
+        }
+    }
+    if ((arg < argc) && (argv[arg][0] != '-')) {
+        argcheck(arg, argc, argv);
+        migr = atof(argv[arg++]);
+    } else
+        migr = 0.0;
+
+    for (i = 0; i < pars.cp.npop; i++)
+        for (j = 0; j < pars.cp.npop; j++)
+            pars.cp.mig_mat[i][j] = migr / (pars.cp.npop - 1);
+
+    for (i = 0; i < pars.cp.npop; i++)
+        pars.cp.mig_mat[i][i] = migr;
+    return (arg);
+}
+
+static int parse_demographic_event(int arg, int argc, char *argv[])
+{
+    int i, pop, npop2;
+    struct devent *pt;
+    char ch3;
+
+    pt = (struct devent *)malloc(sizeof(struct devent));
+    pt->detype = argv[arg][2];
+    ch3 = argv[arg][3];
+    arg++;
+    argcheck(arg, argc, argv);
+    pt->time = atof(argv[arg++]);
+    pt->nextde = NULL;
+
+    insert_event_sorted(pt);
+
+    switch (pt->detype) {
+    case 'N':
+        argcheck(arg, argc, argv);
+        pt->paramv = atof(argv[arg++]);
+        break;
+    case 'G':
+        if (arg >= argc) {
+            fprintf(stderr, "Not enough arg's after -eG.\n");
+            usage();
+        }
+        pt->paramv = atof(argv[arg++]);
+        break;
+    case 'M':
+        argcheck(arg, argc, argv);
+        pt->paramv = atof(argv[arg++]);
+        break;
+    case 'n':
+        argcheck(arg, argc, argv);
+        pt->popi = atoi(argv[arg++]) - 1;
+        argcheck(arg, argc, argv);
+        pt->paramv = atof(argv[arg++]);
+        break;
+    case 'g':
+        argcheck(arg, argc, argv);
+        pt->popi = atoi(argv[arg++]) - 1;
+        if (arg >= argc) {
+            fprintf(stderr, "Not enough arg's after -eg.\n");
+            usage();
+        }
+        pt->paramv = atof(argv[arg++]);
+        break;
+    case 's':
+        argcheck(arg, argc, argv);
+        pt->popi = atoi(argv[arg++]) - 1;
+        argcheck(arg, argc, argv);
+        pt->paramv = atof(argv[arg++]);
+        break;
+    case 'm':
+        if (ch3 == 'a') {
+            pt->detype = 'a';
+            argcheck(arg, argc, argv);
+            npop2 = atoi(argv[arg++]);
+            pt->mat = (double **)malloc((unsigned)npop2 * sizeof(double *));
+            for (pop = 0; pop < npop2; pop++) {
+                (pt->mat)[pop] = (double *)malloc((unsigned)npop2 * sizeof(double));
+                for (i = 0; i < npop2; i++) {
+                    if (i == pop) {
+                        arg++;
+                    } else {
+                        argcheck(arg, argc, argv);
+                        (pt->mat)[pop][i] = atof(argv[arg++]);
+                    }
+                }
+            }
+            calc_matrix_diagonal(pt->mat, npop2);
+        } else {
+            argcheck(arg, argc, argv);
+            pt->popi = atoi(argv[arg++]) - 1;
+            argcheck(arg, argc, argv);
+            pt->popj = atoi(argv[arg++]) - 1;
+            argcheck(arg, argc, argv);
+            pt->paramv = atof(argv[arg++]);
+        }
+        break;
+    case 'j':
+        argcheck(arg, argc, argv);
+        pt->popi = atoi(argv[arg++]) - 1;
+        argcheck(arg, argc, argv);
+        pt->popj = atoi(argv[arg++]) - 1;
+        break;
+        /* adna */
+    case 'A':
+        argcheck(arg, argc, argv);
+        pt->popi = atoi(argv[arg++]) - 1;
+        argcheck(arg, argc, argv);
+        pt->num = atoi(argv[arg++]);
+        pars.cp.nsam += pt->num;
+        break;
+    default:
+        fprintf(stderr, "e event\n");
+        usage();
+    }
+    return (arg);
 }
 
 static void argcheck(int arg, int argc, char *argv[])
@@ -930,18 +1012,22 @@ static void usage()
     exit(1);
 }
 
-static void add_to_event_list(struct devent *pt, struct devent *elist)
+static void insert_event_sorted(struct devent *pt)
 {
-    struct devent *plast, *pevent, *ptemp;
+    struct devent *plast, *pevent;
 
-    pevent = elist;
+    if ((pars.cp.deventlist == NULL) || (pt->time < pars.cp.deventlist->time)) {
+        pt->nextde = pars.cp.deventlist;
+        pars.cp.deventlist = pt;
+        return;
+    }
+    pevent = pars.cp.deventlist;
     while ((pevent != NULL) && (pevent->time <= pt->time)) {
         plast = pevent;
         pevent = pevent->nextde;
     }
-    ptemp = plast->nextde;
     plast->nextde = pt;
-    pt->nextde = ptemp;
+    pt->nextde = pevent;
 }
 
 static void free_event_list(struct devent *pt, int npop)
@@ -1012,7 +1098,7 @@ static double tree_time_mfreq(struct node *ptree, int nsam, int mfreq)
     t = 0.;
     for (i = 0; i < 2 * nsam - 2; i++) {
         if (((ptree + i)->ndes >= mfreq) && ((ptree + i)->ndes <= nsam - mfreq)) {
-            t += (ptree + (ptree + i)->abv)->time - (ptree + i)->time;
+            t += branch_length(ptree, i);
         }
     }
 
@@ -1045,11 +1131,8 @@ static void print_tree(struct node *ptree, int nsam)
 // Función para imprimir los arboles en formato de Newick
 static void print_parenthesis(struct node *ptree, int *left_child, int *right_child, int noden)
 {
-    double time;
-
     if (left_child[noden] == -1) {
-        printf("%d:%5.3lf", noden + 1,
-               (ptree + ((ptree + noden)->abv))->time - (ptree + noden)->time); /* adna */
+        printf("%d:%5.3lf", noden + 1, branch_length(ptree, noden)); /* adna */
     } else {
         printf("(");
         print_parenthesis(ptree, left_child, right_child, left_child[noden]);
@@ -1058,10 +1141,21 @@ static void print_parenthesis(struct node *ptree, int *left_child, int *right_ch
         if ((ptree + noden)->abv == 0) {
             printf(");\n");
         } else {
-            time = (ptree + (ptree + noden)->abv)->time - (ptree + noden)->time;
-            printf("):%5.3lf", time);
+            printf("):%5.3lf", branch_length(ptree, noden));
         }
     }
+}
+
+/* Duración de la rama que une al nodo i con su nodo padre */
+static double branch_length(struct node *ptree, int i)
+{
+    return (ptree + (ptree + i)->abv)->time - (ptree + i)->time;
+}
+
+/* Instante elegido al azar (uniforme) dentro de la rama del nodo i */
+static double random_age_in_branch(struct node *ptree, int i)
+{
+    return (ptree + i)->time + ran1() * branch_length(ptree, i);
 }
 
 /***  pick_branch : returns a random branch from the tree. The probability of picking
@@ -1076,16 +1170,14 @@ static int pick_branch(int nsam, struct node *ptree, double tt)
     x = ran1() * tt;
 
     for (i = 0, y = 0; i < 2 * nsam - 2; i++) {
-        y += (ptree + (ptree + i)->abv)->time - (ptree + i)->time;
+        y += branch_length(ptree, i);
         if (y >= x) {
-            alleleage =
-                (ptree + i)->time + ran1() * ((ptree + (ptree + i)->abv)->time - (ptree + i)->time);
+            alleleage = random_age_in_branch(ptree, i);
             return (i);
         }
     }
 
-    i = 2 * nsam - 3;
-    alleleage = (ptree + i)->time + ran1() * ((ptree + (ptree + i)->abv)->time - (ptree + i)->time);
+    alleleage = random_age_in_branch(ptree, 2 * nsam - 3);
 
     return (2 * nsam - 3); /* changed 4 Feb 2010 */
 }
@@ -1099,18 +1191,16 @@ static int pick_branch_freq(int nsam, int mfreq, struct node *ptree, double tt)
 
     for (i = 0, y = 0; i < 2 * nsam - 2; i++) {
         if (((ptree + i)->ndes >= mfreq) && ((ptree + i)->ndes <= nsam - mfreq)) {
-            y += (ptree + (ptree + i)->abv)->time - (ptree + i)->time;
+            y += branch_length(ptree, i);
             lastbranch = i; /* changed 4 Feb 2010 */
         }
         if (y >= x) {
-            alleleage =
-                (ptree + i)->time + ran1() * ((ptree + (ptree + i)->abv)->time - (ptree + i)->time);
+            alleleage = random_age_in_branch(ptree, i);
             return (i);
         }
     }
 
-    i = lastbranch;
-    alleleage = (ptree + i)->time + ran1() * ((ptree + (ptree + i)->abv)->time - (ptree + i)->time);
+    alleleage = random_age_in_branch(ptree, lastbranch);
 
     return (lastbranch); /*  changed 4 Feb 2010 */
 }
