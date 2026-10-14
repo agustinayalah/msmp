@@ -72,22 +72,24 @@
            split and join subpopulations.   March 8, 2003. (Old versions saved in msold.tar ).
         !!! Fixed bug in -en option.  Earlier versions may have produced garbage when -en ... used.
 9 Dec 2003 Fixed bug which resulted in incorrect results for the case where rho = 0.0 and gene
-conversion rate > 0.0. This case was not handled correctly in early versions of the program. 5 Apr
-2004.  (Thanks to Vincent Plagnol for pointing out this problem.) Fixed bug in print_tree().  Earlier
-versions may have produced garbage when the -T option was used. 1 Jul 2004. Fixed bug in -e. options
-that caused problems with -f option  13 Aug 2004. Fixed bug in -es option, which was a problem when
-used with -eG. (Thanks again to V. Plagnol.) 6 Nov. 2004 Added -F option:  -F minfreq  produces
-output with sites with minor allele freq < minfreq filtered out.  11 Nov. 2004. Fixed bug in
-streec.c (isseg() ).  Bug caused segmentation fault, crash on some machines. (Thanks to Melissa Jane
-Todd-Hubisz for finding and reporting this bug.) Added -seeds option 4 Nov 2006 Added "tbs"
-arguments feature 4 Nov 2006 Added -L option.  10 May 2007 Changed -ej option to set Mki = 0
-pastward of the ej event.  See msdoc.pdf.  May 19 2007. fixed bug with memory allocation when using
--I option. This caused problems expecially on Windows machines.  Thanks to several people, including
-Vitor Sousa and Stephane De Mita for help on this one. Oct. 17, 2007. Modified pick_branch() and pick_branch_freq()
-to eliminate rare occurrence of fixed mutations Thanks to J. Liechty and K. Thornton. 4 Feb 2010.
-        Added -p n  switch to allow position output to be higher precision.  10 Nov 2012.
-     Changed spot from int to long in the function re().  29 July 2013.  ( Thanks to Yuri D'Elia for
-this suggestion.) Changed function definitions, and misc other things to comply with c99
+conversion rate > 0.0. This case was not handled correctly in early versions of the program. 
+5 Apr 2004.  (Thanks to Vincent Plagnol for pointing out this problem.) Fixed bug in print_tree().  Earlier
+versions may have produced garbage when the -T option was used. 
+1 Jul 2004. Fixed bug in -e. options that caused problems with -f option  
+13 Aug 2004. Fixed bug in -es option, which was a problem when used with -eG. (Thanks again to V. Plagnol.) 
+6 Nov. 2004 Added -F option: -F minfreq  produces output with sites with minor allele freq < minfreq filtered out.  
+11 Nov. 2004. Fixed bug in streec.c (isseg() ).  Bug caused segmentation fault, crash on some machines. (Thanks to Melissa Jane
+Todd-Hubisz for finding and reporting this bug.) Added -seeds option 
+4 Nov 2006 Added "tbs" arguments feature 
+4 Nov 2006 Added -L option.  
+10 May 2007 Changed -ej option to set Mki = 0 pastward of the ej event.  See msdoc.pdf.  
+May 19 2007. fixed bug with memory allocation when using -I option. This caused problems expecially on Windows machines.  
+Thanks to several people, including Vitor Sousa and Stephane De Mita for help on this one. 
+Oct. 17, 2007. Modified pick_branch() and pick_branch_freq() to eliminate rare occurrence of fixed mutations 
+Thanks to J. Liechty and K. Thornton.
+4 Feb 2010. Added -p n  switch to allow position output to be higher precision.  
+10 Nov 2012. Changed spot from int to long in the function re().  
+29 July 2013. ( Thanks to Yuri D'Elia for this suggestion.) Changed function definitions, and misc other things to comply with c99
      requirements.  4 Mar 2014.
 ***************************************************************************/
 
@@ -99,13 +101,13 @@ this suggestion.) Changed function definitions, and misc other things to comply 
 #include <stdlib.h>
 #include <string.h>
 
-#define SITESINC 10 
+#define SITESINC 10       
 #define TBS_PARAMS_LENGTH 30
 #define PARAM_FILE_ARG_LENGTH 20
 #define MIN_ARGS 4                  // Representa la cantidad mínima de argumentos
 #define FIRST_OPTION_ARG 3          // Representa la posición de la primera opción en los parámetros
-#define OUTPUT_PRECISION 4
-#define MIN_NSITES 2 
+#define OUTPUT_PRECISION 4          // Representa la cantidad de decimales para las posiciones
+#define MIN_NSITES 2
 #define MIN_MFREQ 2
 
 unsigned maxsites = SITESINC;
@@ -190,7 +192,7 @@ int main(int argc, char *argv[])
     /* results are stored in global variable, pars */
 
     if (!pars.commandlineseedflag)
-        seedit("s");                                // Si no hay parametros, seteamos el seed en "s"
+        seedit("s");               // Si no hay parametros, seteamos el seed en "s"
 
     pf = stdout;
 
@@ -410,7 +412,18 @@ static void ensure_sites_capacity(int needed, int nsam, char **list)
     }
 }
 
-// Reserva espacio para la matriz de gametos y los vectores de posiciones y edades 
+//  
+/*
+ *	@brief Reserva espacio para la matriz de gametos y los vectores de posiciones y edades
+ *
+ *	Si no se fija la cantidad de sitios segregantes con -s, entonces reserva con un máximo predefinido 
+ *  maxsegsites. Caso contrario, entonces se reserva un espacio fijo de tamaño segsites, adicionalmente
+ *  se calcula el factor de segregación "segfac" que se utiliza para calcular la probabilidad de obtener
+ *  segsites cantidad de mutaciones para el tamaño de muestra elegido.
+ *
+ *	@return	list : Matríz de gametos inicializada con tamaño maxsites o segsites
+ *
+ */
 static char **allocate_buffers(void)
 {
     int i;
@@ -420,12 +433,13 @@ static char **allocate_buffers(void)
         list = cmatrix(pars.cp.nsam, maxsites + 1);
         posit = (double *)malloc((unsigned)(maxsites * sizeof(double)));    // posit y agevec son los metadatos de los segmentos como la
         agevec = (double *)malloc((unsigned)(maxsites * sizeof(double)));   // posición donde ocurrió la mutación (rango de 0 a 1) o la edad
+                                                                            // en la que ocurrió la mutación (hacia atrás) 
     } else {                                        // Sitios segregantes fijos -s segsites
         list = cmatrix(pars.cp.nsam, pars.mp.segsitesin + 1);
         posit = (double *)malloc((unsigned)(pars.mp.segsitesin * sizeof(double)));
         agevec = (double *)malloc((unsigned)(pars.mp.segsitesin * sizeof(double)));
         if (pars.mp.theta > 0.0) {
-            segfac = 1.0;
+            segfac = 1.0;                           // segfac = segsitesin!
             for (i = pars.mp.segsitesin; i > 1; i--)
                 segfac *= i;
         }
@@ -532,7 +546,7 @@ static void locate(int n, double beg, double len, double *ptr)
  * 
  *	@param[in]	argc : Cantidad de parámetros pasados al ejecutar el programa
  *	@param[in]	argv : Lista de parámetros pasados al ejecutar el programa
- *	@param[out]	phowmany : Cantidad de repeticiones sobre un mismo conjunto de muestras a simular
+ *	@param[in]	phowmany : Cantidad de repeticiones sobre un mismo conjunto de muestras a simular
  *
  */
 static void getpars(int argc, char *argv[], int *phowmany)
