@@ -330,7 +330,7 @@ struct segl *simulate_coalescent(struct c_params *cp, int *pnsegs)
                 nchrom_links += ((long)(num)) * (nsites - 1);
                 cleft += num * (1.0 - pow(pc, (double)(nsites - 1)));
 
-                if ((nchrom + num) >= maxchr) {
+                if ( (unsigned int)(nchrom + num) >= maxchr) {
                     maxchr += CHROMOSOME_INC;
                     chrom =
                         (struct chromo *)realloc(chrom, (unsigned)(maxchr * sizeof(struct chromo)));
@@ -607,7 +607,7 @@ static int crossover(int nsam, int ic, int is)
     /* copy last part of chrom to nchrom  */
 
     nchrom++;
-    if (nchrom >= maxchr) {
+    if ( (unsigned int)nchrom >= maxchr) {
         maxchr += CHROMOSOME_INC;
         chrom = (struct chromo *)realloc(chrom, (unsigned)(maxchr * sizeof(struct chromo)));
         if (chrom == NULL)
@@ -657,7 +657,7 @@ static void insert_new_tree(int i, int nsam)
 {
     int k;
 
-    if (nsegs >= seglimit) {
+    if ( (unsigned int)nsegs >= seglimit) {
         seglimit += SEGINC;
         nnodes = (int *)realloc(nnodes, (unsigned)(sizeof(int) * seglimit));
         if (nnodes == NULL)
