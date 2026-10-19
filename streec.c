@@ -72,11 +72,11 @@ static struct segl *seglst = NULL;
 /* ---- funciones externas (rand1.c, ms.c) ---- */
 extern double ran1(void);
 
-struct segl *simulate_coalescent(struct c_params *cp, int *pnsegs);
+struct segl *simulate_coalescent(const struct c_params *cp, int *pnsegs);
 static void allocate_buffers(int nsam);
 static void init_chromo(int ind, int desc, int pop, int nsites);
-static void check_isolated_populations(int *config, int npop, double mig, struct devent *nextevent);
-static void migration_event(int *config, double **migration_matrix, int npop, double mig);
+static void check_isolated_populations(const int *config, int npop, double mig, const struct devent *nextevent);
+static void migration_event(int *config, double *const *migration_matrix, int npop, double mig);
 static int recombination_event(int nsam);
 static int conv_left(int nsam);
 static int conv_inside(int nsam, int nsites);  // Conversion left y conversion inside
@@ -88,7 +88,7 @@ static void remove_chrom_links(int c);
 static void add_chrom_links(int c);
 static void move_last_chrom_to(int c);
 static int chromo_has_segment(int start, int c, int *psg);
-static void pick_2_chrom(int pop, int config[], int *pc1, int *pc2);
+static void pick_2_chrom(int pop, const int config[], int *pc1, int *pc2);
 static int next_chrom_in_pop(int pop, int target, int i, int count);
 static int pick_2_random_numbers(int n, int *i, int *j);
 static int chrom_links(int c);
@@ -108,7 +108,7 @@ static int chrom_links(int c);
  *	@return	seglst : La lista de segmentos de ADN
  *
  */
-struct segl *simulate_coalescent(struct c_params *cp, int *pnsegs)
+struct segl *simulate_coalescent(const struct c_params *cp, int *pnsegs)
 {
     int i, j, k, seg, dec, pop, pop2, c1, c2, ind, rchrom, nsamin, numanc, num;
     int *config;
@@ -116,10 +116,11 @@ struct segl *simulate_coalescent(struct c_params *cp, int *pnsegs)
     double prec, cin, prect, mig, ran, coal_prob, rdum, arg;
     char event;
     int eflag, cpop, ic;
-    int nsam, npop, nsites, *inconfig;
+    int nsam, npop, nsites ;
+    const int *inconfig ;
     double r, f, rf, track_len, **migration_matrix;
     double *size, *alphag, *tlast;
-    struct devent *nextevent;
+    const struct devent *nextevent;
 
     nsam = cp->nsam;                   // Número total de muestras
     nsamin = cp->nsamin; /* adna */    // Número de muestras en el presente cuando t = 0
@@ -462,7 +463,7 @@ static void init_chromo(int ind, int desc, int pop, int nsites)
 }
 
 // Termina el programa si hay linajes en más de una subpoblación sin migración entre ellas ni eventos demográficos pendientes (nunca coalescerían) 
-static void check_isolated_populations(int *config, int npop, double mig, struct devent *nextevent)
+static void check_isolated_populations(const int *config, int npop, double mig, const struct devent *nextevent)
 {
     int i, j;
 
@@ -479,7 +480,7 @@ static void check_isolated_populations(int *config, int npop, double mig, struct
 }
 
 // Evento de migración: elige un linaje al azar (proporcional a la tasa de migración de su subpoblación) y lo mueve a otra subpoblación
-static void migration_event(int *config, double **migration_matrix, int npop, double mig)
+static void migration_event(int *config, double *const *migration_matrix, int npop, double mig)
 {
     int i, migrant, source_pop;
     double x, sum;
@@ -796,7 +797,7 @@ static int chromo_has_segment(int start, int c, int *psg)
     return (0);
 }
 
-static void pick_2_chrom(int pop, int config[], int *pc1, int *pc2)
+static void pick_2_chrom(int pop, const int config[], int *pc1, int *pc2)
 {
     int c1, c2, cs, cb;
 

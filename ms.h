@@ -54,5 +54,5 @@ struct segl {
 
 double ran1(void);
 void seedit(const char *flag);
-int commandlineseed(char **seeds);
-struct segl *simulate_coalescent(struct c_params *cp, int *pnsegs);
+int commandlineseed(char *const *seeds);
+struct segl *simulate_coalescent(const struct c_params *cp, int *pnsegs);

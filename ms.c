@@ -128,35 +128,35 @@ static char **cmatrix(int nsam, int len);
 static void locate(int n, double beg, double len, double *ptr);
 
 static void getpars(int argc, char *argv[], int *phowmany);
-static void argcheck(int arg, int argc, char *argv[]);
+static void argcheck(int arg, int argc, char *const argv[]);
 static void usage(void);
 static void insert_event_sorted(struct devent *pt);
 static char **allocate_buffers(void);
-static void print_sample(FILE *pf, char **list, int segsites, double probss);
-static int segment_end(struct segl *seglst, int seg, int k, int nsegs, int nsites);
-static double segment_tree_time(struct node *ptree, int nsam, int mfreq);
-static void print_segment_trees(struct segl *seglst, int nsegs);
-static void compute_tree_times(struct segl *seglst, int nsegs, double *ptmrca, double *pttot);
-static int mutate_with_theta(struct segl *seglst, int nsegs, char **list);
-static int mutate_fixed_segsites(struct segl *seglst, int nsegs, char **list, double *pprobss);
+static void print_sample(FILE *pf, char *const *list, int segsites, double probss);
+static int segment_end(const struct segl *seglst, int seg, int k, int nsegs, int nsites);
+static double segment_tree_time(const struct node *ptree, int nsam, int mfreq);
+static void print_segment_trees(const struct segl *seglst, int nsegs);
+static void compute_tree_times(const struct segl *seglst, int nsegs, double *ptmrca, double *pttot);
+static int mutate_with_theta(const struct segl *seglst, int nsegs, char **list);
+static int mutate_fixed_segsites(const struct segl *seglst, int nsegs, char **list, double *pprobss);
 static void ensure_sites_capacity(int needed, int nsam, char **list);
 static void set_default_params(void);
-static int parse_island_model(int arg, int argc, char *argv[], int *pnpop);
-static int parse_demographic_event(int arg, int argc, char *argv[]);
+static int parse_island_model(int arg, int argc, char *const argv[], int *pnpop);
+static int parse_demographic_event(int arg, int argc, char *const argv[]);
 static void calc_matrix_diagonal(double **mat, int npop);
-static double branch_length(struct node *ptree, int i); 
-static double random_age_in_branch(struct node *ptree, int i);  
+static double branch_length(const struct node *ptree, int i); 
+static double random_age_in_branch(const struct node *ptree, int i);  
 static void free_event_list(struct devent *pt, int npop);
-static void make_gametes(int nsam, int mfreq, struct node *ptree, double tt, int newsites, int ns, char **list);
-static double tree_time(struct node *ptree, int nsam);
-static double tree_time_mfreq(struct node *ptree, int nsam, int mfreq);
-static void print_tree(struct node *ptree, int nsam);
-static void print_parenthesis(struct node *ptree, int *left_child, int *right_child, int noden);
-static int pick_branch(int nsam, struct node *ptree, double tt);
-static int pick_branch_freq(int nsam, int mfreq, struct node *ptree, double tt);
-static int is_descendant(struct node *ptree, int tip, int node);
+static void make_gametes(int nsam, int mfreq, const struct node *ptree, double tt, int newsites, int ns, char **list);
+static double tree_time(const struct node *ptree, int nsam);
+static double tree_time_mfreq(const struct node *ptree, int nsam, int mfreq);
+static void print_tree(const struct node *ptree, int nsam);
+static void print_parenthesis(const struct node *ptree, const int *left_child, const int *right_child, int noden);
+static int pick_branch(int nsam, const struct node *ptree, double tt);
+static int pick_branch_freq(int nsam, int mfreq, const struct node *ptree, double tt);
+static int is_descendant(const struct node *ptree, int tip, int node);
 static void ordran(int n, double pbuf[]);
-static void multinomial(int n, int nclass, double p[], int rv[]);
+static void multinomial(int n, int nclass, const double p[], int rv[]);
 static void order(int n, double pbuf[]);
 static void ranvec(int n, double pbuf[]);
 static int poisso(double u);
@@ -269,7 +269,7 @@ static int generate_sample(char **list, double *pprobss, double *ptmrca, double 
 }
 
 // Imprime el árbol, se activa con la opción -T 
-static void print_segment_trees(struct segl *seglst, int nsegs)
+static void print_segment_trees(const struct segl *seglst, int nsegs)
 {
     int seg, k, start, end, len;
     int nsites = pars.cp.nsites, nsam = pars.cp.nsam;
@@ -288,7 +288,7 @@ static void print_segment_trees(struct segl *seglst, int nsegs)
 }
 
 // Usando la opción -L calcula el tiempo al MRCA y la longitud total del árbol 
-static void compute_tree_times(struct segl *seglst, int nsegs, double *ptmrca, double *pttot)
+static void compute_tree_times(const struct segl *seglst, int nsegs, double *ptmrca, double *pttot)
 {
     int seg, k, start, end, len;
     int nsites = pars.cp.nsites, nsam = pars.cp.nsam, mfreq = pars.mp.mfreq;
@@ -311,7 +311,7 @@ static void compute_tree_times(struct segl *seglst, int nsegs, double *ptmrca, d
 }
 
 // Aplica mutaciones con tasa theta (opción -t) y devuelve la cantidad de sitios segregantes 
-static int mutate_with_theta(struct segl *seglst, int nsegs, char **list)
+static int mutate_with_theta(const struct segl *seglst, int nsegs, char **list)
 {
     int seg, k, start, end, len, segsit, ns = 0;
     int nsites = pars.cp.nsites, nsam = pars.cp.nsam, mfreq = pars.mp.mfreq;
@@ -336,7 +336,7 @@ static int mutate_with_theta(struct segl *seglst, int nsegs, char **list)
 }
 
 // Aplica una cantidad fija de sitios segregantes entre los segmentos (opción -s) y retorna los segsites
-static int mutate_fixed_segsites(struct segl *seglst, int nsegs, char **list, double *pprobss)
+static int mutate_fixed_segsites(const struct segl *seglst, int nsegs, char **list, double *pprobss)
 {
     int seg, k, start, end, len, ns;
     int nsites = pars.cp.nsites, nsam = pars.cp.nsam, mfreq = pars.mp.mfreq;
@@ -389,12 +389,12 @@ static int mutate_fixed_segsites(struct segl *seglst, int nsegs, char **list, do
     return (ns);
 }
 
-static int segment_end(struct segl *seglst, int seg, int k, int nsegs, int nsites)
+static int segment_end(const struct segl *seglst, int seg, int k, int nsegs, int nsites)
 {
     return (k < nsegs - 1 ? seglst[seglst[seg].next].beg - 1 : nsites - 1);
 }
 
-static double segment_tree_time(struct node *ptree, int nsam, int mfreq)
+static double segment_tree_time(const struct node *ptree, int nsam, int mfreq)
 {
     if (mfreq == 1)
         return tree_time(ptree, nsam);
@@ -448,7 +448,7 @@ static char **allocate_buffers(void)
 }
 
 // Imprime los resultados de una réplica como los segsites, posiciones, edades y gametos 
-static void print_sample(FILE *pf, char **list, int segsites, double probss)
+static void print_sample(FILE *pf, char *const *list, int segsites, double probss)
 {
     int i, k, afreq;
 
@@ -817,7 +817,7 @@ static void calc_matrix_diagonal(double **mat, int npop)
 }
 
 // Procesa la opción -I npop n1 n2 ... [mig_rate] del modelo de islas, recibe en arg la posición de "-I" y devuelve la posición del siguiente argumento
-static int parse_island_model(int arg, int argc, char *argv[], int *pnpop)
+static int parse_island_model(int arg, int argc, char *const argv[], int *pnpop)
 {
     int i, j;
     double migr;
@@ -872,7 +872,7 @@ static int parse_island_model(int arg, int argc, char *argv[], int *pnpop)
     return (arg);
 }
 
-static int parse_demographic_event(int arg, int argc, char *argv[])
+static int parse_demographic_event(int arg, int argc, char *const argv[])
 {
     int i, pop, npop2;
     struct devent *pt;
@@ -973,7 +973,7 @@ static int parse_demographic_event(int arg, int argc, char *argv[])
     return (arg);
 }
 
-static void argcheck(int arg, int argc, char *argv[])
+static void argcheck(int arg, int argc, char *const argv[])
 {
     if ((arg >= argc) || (argv[arg][0] == '-')) {
         fprintf(stderr, "not enough arguments after %s\n", argv[arg - 1]);
@@ -1076,8 +1076,7 @@ static void free_event_list(struct devent *pt, int npop)
 #define STATE1 '1' // Mutación
 #define STATE2 '0' // Conservación del gen
 
-static void make_gametes(int nsam, int mfreq, struct node *ptree, double tt, int newsites, int ns,
-                  char **list)
+static void make_gametes(int nsam, int mfreq, const struct node *ptree, double tt, int newsites, int ns, char **list)
 {
     int tip, j, node;
     for (j = ns; j < ns + newsites; j++) {
@@ -1097,7 +1096,7 @@ static void make_gametes(int nsam, int mfreq, struct node *ptree, double tt, int
 
 /***  tree_time.c : Returns the total time in the tree, *ptree, with nsam tips. **/
 
-static double tree_time(struct node *ptree, int nsam)
+static double tree_time(const struct node *ptree, int nsam)
 {
     double t;
     int i;
@@ -1111,7 +1110,7 @@ static double tree_time(struct node *ptree, int nsam)
     return (t);
 }
 
-static double tree_time_mfreq(struct node *ptree, int nsam, int mfreq)
+static double tree_time_mfreq(const struct node *ptree, int nsam, int mfreq)
 {
     double t;
     int i;
@@ -1126,7 +1125,7 @@ static double tree_time_mfreq(struct node *ptree, int nsam, int mfreq)
     return (t);
 }
 
-static void print_tree(struct node *ptree, int nsam)
+static void print_tree(const struct node *ptree, int nsam)
 {
     int i, *left_child, *right_child;
 
@@ -1150,7 +1149,7 @@ static void print_tree(struct node *ptree, int nsam)
 }
 
 // Función para imprimir los arboles en formato de Newick
-static void print_parenthesis(struct node *ptree, int *left_child, int *right_child, int noden)
+static void print_parenthesis(const struct node *ptree, const int *left_child, const int *right_child, int noden)
 {
     if (left_child[noden] == -1) {
         printf("%d:%5.3lf", noden + 1, branch_length(ptree, noden)); /* adna */
@@ -1168,13 +1167,13 @@ static void print_parenthesis(struct node *ptree, int *left_child, int *right_ch
 }
 
 /* Duración de la rama que une al nodo i con su nodo padre */
-static double branch_length(struct node *ptree, int i)
+static double branch_length(const struct node *ptree, int i)
 {
     return (ptree + (ptree + i)->abv)->time - (ptree + i)->time;
 }
 
 /* Instante elegido al azar (uniforme) dentro de la rama del nodo i */
-static double random_age_in_branch(struct node *ptree, int i)
+static double random_age_in_branch(const struct node *ptree, int i)
 {
     return (ptree + i)->time + ran1() * branch_length(ptree, i);
 }
@@ -1183,7 +1182,7 @@ static double random_age_in_branch(struct node *ptree, int i)
               a particular branch is proportional to its duration. tt is total
               time in tree.   ****/
 
-static int pick_branch(int nsam, struct node *ptree, double tt)
+static int pick_branch(int nsam, const struct node *ptree, double tt)
 {
     double x, y;
     int i;
@@ -1203,7 +1202,7 @@ static int pick_branch(int nsam, struct node *ptree, double tt)
     return (2 * nsam - 3); /* changed 4 Feb 2010 */
 }
 
-static int pick_branch_freq(int nsam, int mfreq, struct node *ptree, double tt)
+static int pick_branch_freq(int nsam, int mfreq, const struct node *ptree, double tt)
 {
     double x, y;
     int i, lastbranch = 0;
@@ -1228,7 +1227,7 @@ static int pick_branch_freq(int nsam, int mfreq, struct node *ptree, double tt)
 
 /****  is_descendant : returns 1 if tip is a descendant of node in *ptree, otherwise 0. **/
 
-static int is_descendant(struct node *ptree, int tip, int node)
+static int is_descendant(const struct node *ptree, int tip, int node)
 {
     int k;
 
@@ -1251,7 +1250,7 @@ static void ordran(int n, double pbuf[])
     return;
 }
 
-static void multinomial(int n, int nclass, double p[], int rv[])
+static void multinomial(int n, int nclass, const double p[], int rv[])
 {
     double x, s;
     int i, j;

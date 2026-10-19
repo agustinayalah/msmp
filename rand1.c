@@ -5,7 +5,7 @@
 
 double ran1(void);
 void seedit(const char *flag);
-int commandlineseed(char **seeds);
+int commandlineseed(char *const *seeds);
 
 double ran1()
 {
@@ -44,7 +44,7 @@ void seedit(const char *flag)
     }
 }
 
-int commandlineseed(char **seeds)
+int commandlineseed(char *const *seeds)
 {
     unsigned short seedv[3];
 
