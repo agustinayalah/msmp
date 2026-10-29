@@ -25,7 +25,7 @@ for P in "$PROGRAM1" "$PROGRAM2"; do
 done
 
 echo "######################################"
-echo "Validando programas "
+echo "####### Validating programs... #######"
 echo "######################################"
 
 OUT1=$(mktemp)
@@ -35,7 +35,7 @@ OUT2=$(mktemp)
 
 for N in {1..6}; do
 	PARAMS_FILE="params.case.0${N}"
-	echo "-------------Caso 0${N}-----------------"
+	echo "-----------param.case.0${N}--------------"
 
 	source "$PARAMS_FILE"
 
@@ -44,15 +44,17 @@ for N in {1..6}; do
 	$PROGRAM2 $cmd > $OUT2
 	
 	if diff <(tail -n +2 "$OUT1") <(tail -n +2 "$OUT2") > /dev/null; then
-		echo "Case 0${N}:Programs are equivalent"
+		echo "Case 0${N} : Programs are equivalent"
 	else
-		echo "Case 0${N}:Programs are different"
+		echo "Case 0${N} : Programs are different"
 		diff <(tail -n +2 "$OUT1") <(tail -n +2 "$OUT2")
 	fi
 done
 
 rm -f "$OUT1" "$OUT2"
 
+echo "######################################"
+echo "######## Validation finished. ########"
 echo "######################################"
 
 exit 0
