@@ -508,11 +508,15 @@ static void migration_event(int *config, double *const *migration_matrix, int np
     chrom[migrant].pop = source_pop;
 }
 
-/******  recombination subroutine ***************************
-   Picks a chromosome and splits it in two parts. If the x-over point
-   is in a new spot, a new segment is added to seglst and a tree set up
-   for it.   ****/
-
+/*
+ *	@brief Es la subrutina que ejecuta la recombinación : Elige un cromosoma y lo divide en dos partes. 
+ *  Si el punto de corte es un lugar nuevo, un nuevo segmento se agrega a seglst y se asigna un nuevo arbol 
+ *  para ese segmento.
+ *	
+ *	@param[in]	nsam : Es el tamaño de la muestra
+ *	@return	ic : Es el índice del cromosoma modificado
+ *
+ */
 static int recombination_event(int nsam)
 {
     int ic, is, endic;
@@ -543,6 +547,16 @@ static int conv_left(int nsam)
     return (ic);
 }
 
+/*
+ *	@brief 
+ *	
+ *  @param[in] spot : Es el número de enlace aleatorio que representa la posición global a lo largo de 
+ *                    todos los cromosomas donde se hace el corte.
+ *  @param[in, out] pis : Puntero a la posición física donde se debe hacer el corte.
+ *	@param[in, out] pend : Puntero al final del segmento del cromosoma seleccionado.
+ *	@return	ic : Es el índice del cromosoma a ser modificado.
+ *
+ */
 static int conv_inside(int nsam, int nsites)
 {
     int len, ic, is, endic;
@@ -564,7 +578,17 @@ static int conv_inside(int nsam, int nsites)
     return (ic);
 }
 
-// Busca el cromosoma que contiene el enlace número spot (contando todos los cromosomas en orden). Devuelve su índice, el sitio del crossover en *pis y el último sitio de ese cromosoma en *pend. 
+/*
+ *	@brief Busca la posición del segmento a cortar (spot) y guarda la posición física del punto y el 
+ *         final del segmento del cromosoma que se seleccionó.
+ *	
+ *  @param[in] spot : Es el número de enlace aleatorio que representa la posición global a lo largo de 
+ *                    todos los cromosomas donde se hace el corte.
+ *  @param[in, out] pis : Puntero a la posición física donde se debe hacer el corte.
+ *	@param[in, out] pend : Puntero al final del segmento del cromosoma seleccionado.
+ *	@return	ic : Es el índice del cromosoma a ser modificado.
+ *
+ */
 static int find_crossover_chrom(long spot, int *pis, int *pend)
 {
     struct seg *pseg;
@@ -585,6 +609,18 @@ static int find_crossover_chrom(long spot, int *pis, int *pend)
     return (ic);
 }
 
+/*
+ *	@brief Es la función que efectúa el corte del cromosomas, se encarga de modificar las estructuras
+ *         involucradas.
+ * 
+ *  
+ *	
+ *  @param[in] nsam : Es el tamaño de la muestra.
+ *  @param[in] ic : Es el índice del cromosoma que se debe modificar.
+ *	@param[in] is : Es la posición física donde se debe hacer el corte.
+ *	@return	ic : Es el índice del cromosoma modificado.
+ *
+ */
 static int crossover(int nsam, int ic, int is)
 {
     struct seg *pseg, *pseg2;
@@ -597,8 +633,8 @@ static int crossover(int nsam, int ic, int is)
     cleft -= 1 - pow(pc, len);
     /* get seg # (jseg)  */
 
-    for (jseg = 0; is >= (pseg + jseg)->end; jseg++)
-        ;
+    for (jseg = 0; is >= (pseg + jseg)->end; jseg++);
+
     if (is >= (pseg + jseg)->beg)
         in = 1;
     else
