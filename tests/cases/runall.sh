@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Usage : ./runall.sh [test-version] [program-path]
+# Example : ./runall.sh 1.0 /home/juan/Downloads/ms
+
 # Directorio del script
 cd "$(dirname "$0")" || exit 1
 
