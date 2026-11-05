@@ -4,7 +4,7 @@
 cd "$(dirname "$0")" || exit 1
 
 if [ $# -eq 0 ]; then
-    echo "Uso: $0 <testcase> [version_prueba] [ruta_csv]"
+    echo "Usage: $0 <testcase> [test_version] [csv_path] [program_path]"
     exit 1
 fi
 
@@ -27,8 +27,12 @@ if [ -f "$params" ]; then
         source "$params"
         
         # Ruta al ejecutable (Ajustar si el ejecutable no se llama mspar o está en otro sitio)
-        EXEC="../../ms"
-        
+        if [ -z "$4" ]; then
+			EXEC="../../ms"
+		else
+			EXEC="$4"
+        fi
+
         if [ ! -f "$EXEC" ]; then
             echo "Error: No se encontró el ejecutable en $EXEC"
             exit 1
