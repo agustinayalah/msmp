@@ -689,7 +689,16 @@ static int crossover(int nsam, int ic, int is)
     return (ic);
 }
 
-// Agrega a seglst un segmento nuevo que empieza en begs ubicado después del segmento i con una copia del árbol del segmento i
+/*
+ *	@brief Agrega a seglst un segmento nuevo que empieza en begs ubicado después del segmento i 
+ *  con una copia del árbol del segmento i.
+ * 
+ *  
+ *  @param[in] i : .  
+ *  @param[in] nsam : Es el tamaño de la muestra.
+ *	@return	void
+ *
+ */
 static void insert_new_tree(int i, int nsam)
 {
     int k;
@@ -720,9 +729,23 @@ static void insert_new_tree(int i, int nsam)
     }
 }
 
-/***** common ancestor subroutine **********************
-   Pick two chromosomes and merge them. Update trees if necessary. **/
+//   common ancestor subroutine
+//   Pick two chromosomes and merge them. Update trees if necessary.
 
+/*
+ *	@brief Subrutina que ejecuta el evento de coalescencia o ancestro común. Actualiza arboles si es 
+ *  necesario.
+ *  
+ *  Recorre todos los segmentos
+ * 
+ *	@param[in] nsam : Tamaño de la muestra
+ *	@param[in] nsites : Cantidad de sitios
+ *	@param[in] c1 : Indice del cromosoma c1
+ *	@param[in] c2 : Indice del cromosoma c2
+ *	@return	int : 2 linajes menos 
+ *                1 linaje menos
+ *
+ */
 static int merge_chrom(int nsam, int nsites, int c1, int c2)
 {
     int yes1, yes2, seg1, seg2, seg;
@@ -738,7 +761,7 @@ static int merge_chrom(int nsam, int nsites, int c1, int c2)
 
     tseg = -1;
 
-    for (seg = 0, k = 0; k < nsegs; seg = seglst[seg].next, k++) {
+    for (seg = 0, k = 0; k < nsegs; seg = seglst[seg].next, k++) {  // Recorre todos los segmentos de seglst
         start = seglst[seg].beg;
         yes1 = chromo_has_segment(start, c1, &seg1);
         yes2 = chromo_has_segment(start, c2, &seg2);
@@ -750,7 +773,7 @@ static int merge_chrom(int nsam, int nsites, int c1, int c2)
 
             if (yes1 && yes2) {
                 nnodes[seg]++;
-                if (nnodes[seg] >= (2 * nsam - 2))
+                if (nnodes[seg] >= (2 * nsam - 2))  // Llegamos a la raíz?
                     tseg--;
                 else
                     (pseg + tseg)->desc = nnodes[seg];
@@ -814,10 +837,24 @@ static void move_last_chrom_to(int c)
     chrom[c].pop = chrom[nchrom - 1].pop;
 }
 
-/*** chromo_has_segment: Does chromosome c contain the segment on seglst which starts at
-            start? *psg is the segment of chrom[c] at which one is to begin
-            looking.  **/
+// chromo_has_segment: Does chromosome c contain the segment on seglst which starts at
+//            start? *psg is the segment of chrom[c] at which one is to begin looking.  
 
+/*
+ *	@brief Responde a la pregunta ¿el cromosoma c contiene el segmento de seglst que empieza en start?
+ *  
+ *  Guarda en ns la cantidad de segmentos del cromosoma c.
+ *  Guarda en pseg el puntero al primer segmento del cromosoma c para luego recorrerlo.
+ *  Dentro del bucle, recorre cada segmento del cromosoma y evalúa si el segmento cubre la posición. En
+ *  caso de que exista el solapamiento, retorna 1, caso contrario retorna 0
+ *  
+ *	@param[in] start : Posición que queremos ver si el cromosoma solapa
+ *  @param[in] c : Es el índice del cromosoma que se quiere verificar 
+ *  @param[in] psg : Puntero auxiliar para recorrer los segmentos de manera eficiente
+ *	@return	int : 1 para indicar verdadero 
+ *                0 para indicar falso
+ *
+ */
 static int chromo_has_segment(int start, int c, int *psg)
 {
     int ns;
@@ -868,7 +905,8 @@ static int pick_2_random_numbers(int n, int *i, int *j)
 }
 
 /****  chrom_links(c): returns the number of chrom_links between beginning and end of chrom **/
-
+// Retorna el número de enlaces del cromosoma c que van desde el inicio y el final del cromosoma
+// (chrom[c].pseg + ns) apunta al último seg y (chrom[c].pseg) al primero
 static int chrom_links(int c)
 {
     int ns;
