@@ -96,16 +96,17 @@ static int chrom_links(int c);
 /*
  *	@brief Es la función generadora de arboles coalescentes.
  *
- *	Invoca a simulate_coalescent() que guarda en seglst el arbol de coalescencia. Luego en función de las
- *  opciones ingresadas, muestra el arbol en formato Newick o muestra el tiempo que le tomó a cada
- *  rama hasta coalescer. Por último aplica las mutaciones sobre las ramas de manera aleatoria con
- *  make_gametes().
- *
- *	@param[out]	list : Es la lista de segmentos de ADN de los individuos a completar
- *	@param[out]	pprobss : Es la probailidad de que bajo una tasa de mutación theeta se den n segsites fijos
- *	@param[out]	ptmrca : El tiempo en llegar al most recent common ancester
- *	@param[out]	pttot : El tiempo total para la coalescencia del arbol
- *	@return	seglst : La lista de segmentos de ADN
+ *	En el bucle determina de manera probabilística cual será el proximo evento a ejecutar (a excepción de los
+ *  eventos demográficos que son determinístas). Entre los eventos se encuentran los demográficos, recombinación, 
+ *  conversión génica, coalescencia y eventos migratorios. El bucle sigue mientras quede más de un linaje, contando
+ *  las muestras de ADN antiguo que todavía no entraron en la simulación. Finaliza cuando queda un solo linaje.
+ * 
+ *  Al terminar la ejecución se obtiene como resultado la lista de arboles genealógicos correspondientes a cada 
+ *  segmento del locus.
+ * 
+ *	@param[in] cp : Son los parámetros de coalescencia que incluyen también la lista de eventos demográficos. 
+ *	@param[out]	pnsegs : Es la cantidad de segmentos en los que se dividió el locus.
+ *	@return	seglst : Es la lista de segmentos del locus, cada uno con su árbol genealógico asociado de 2*nsam nodos.
  *
  */
 struct segl *simulate_coalescent(const struct c_params *cp, int *pnsegs)
@@ -429,8 +430,17 @@ struct segl *simulate_coalescent(const struct c_params *cp, int *pnsegs)
 }
 
 /*
- *	@brief Aloca la memoria necesaria para las estructuras chrom, nnodes y seglst. 
- *	
+ *	@brief Reserva la memoria inicial de las estructuras chrom, nnodes y seglst. 
+ *
+ *  Esta función se ejecuta solamente si el puntero correspondiente es NULL.
+ * 
+ *  - chrom es el arreglo de linajes o cromosomas, con nsam + CHROMOSOME_INC sitios. 
+ * 
+ *  - nnodes es el contador de nodos utilizado en el árbol de cada semento con seglimit
+ *  lugares.
+ * 
+ *  - seglst es la lista de segmentos del locus con seglimit lugares.
+ * 
  *	@param[in] nsam : Es el tamaño de la muestra. Se utiliza para alocar la memoria 
  *  inicial de chrom.
  *	@return	void : El resultado son las estructuras con un espacio inicial suficiente
@@ -459,16 +469,17 @@ static void allocate_buffers(int nsam)
 }
 
 /*
- *	@brief Inicializa el cromosoma en la posición ind. 
- *  Se inicializan de forma tal que el segmento cubra todos los sitios 
- *  (beg = 0 y end = nsites - 1), en principio desc coincide con el número de individuo.
- *	
+ *	@brief Inicializa el cromosoma (linaje) de la posición ind en el arreglo chrom. 
+ *
+ *  Se reserva memoria para un solo segmento (nseg = 1) que cubre todo el locus que va desde 
+ *  beg = 0 hasta end = nsites - 1. 
+ * 
  *	@param[in] ind : Es el indice del linaje a inicializar en la estructura chrom
  *	@param[in] desc : Representa a qué nodo pertenece el segmento. Al principio 
- *  coincide con el índice del individuo
+ *  coincide con el índice del individuo 
  *	@param[in] pop : Indica a qué subpoblación pertenece el linaje
  *	@param[in] nsites : Es la cantidad de sitios que tiene el segmento
- *	@return	void : La posición "ind" del arreglo de segmentos inicializado
+ *	@return	void : La posición "ind" de chrom inicializado
  */
 static void init_chromo(int ind, int desc, int pop, int nsites)
 {
@@ -818,7 +829,7 @@ static int merge_chrom(int nsam, int nsites, int c1, int c2)
             c2 = c1;
         nchrom--;
     } else {
-        if (!(pseg = (struct seg *)realloc(pseg, (unsigned)((tseg + 1) * sizeof(struct seg)))))
+        if (!(pseg = (struct seg *)realloc(pseg, (unsigned)((tseg + 1) * sizeof(struct seg))))) // Ajusta el tamaño de pseg
             perror(" realloc error. ca1");
         chrom[c1].pseg = pseg;
         chrom[c1].nseg = tseg + 1;
