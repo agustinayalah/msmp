@@ -428,7 +428,15 @@ struct segl *simulate_coalescent(const struct c_params *cp, int *pnsegs)
     return (seglst);
 }
 
-// Reserva la primera vez que se llama los arreglos que se usan entre réplicas
+/*
+ *	@brief Aloca la memoria necesaria para las estructuras chrom, nnodes y seglst. 
+ *	
+ *	@param[in] nsam : Es el tamaño de la muestra. Se utiliza para alocar la memoria 
+ *  inicial de chrom.
+ *	@return	void : El resultado son las estructuras con un espacio inicial suficiente
+ *  para almacenar los linajes en el caso de chrom, el contador de nodos del arbol 
+ *  general en el caso de nnodes y la lista de segmentos (seglst).
+ */
 static void allocate_buffers(int nsam)
 {
     /* Initialization */
@@ -450,7 +458,18 @@ static void allocate_buffers(int nsam)
     }
 }
 
-// Crea el cromosoma ind con un único segmento que cubre todos los sitios 
+/*
+ *	@brief Inicializa el cromosoma en la posición ind. 
+ *  Se inicializan de forma tal que el segmento cubra todos los sitios 
+ *  (beg = 0 y end = nsites - 1), en principio desc coincide con el número de individuo.
+ *	
+ *	@param[in] ind : Es el indice del linaje a inicializar en la estructura chrom
+ *	@param[in] desc : Representa a qué nodo pertenece el segmento. Al principio 
+ *  coincide con el índice del individuo
+ *	@param[in] pop : Indica a qué subpoblación pertenece el linaje
+ *	@param[in] nsites : Es la cantidad de sitios que tiene el segmento
+ *	@return	void : La posición "ind" del arreglo de segmentos inicializado
+ */
 static void init_chromo(int ind, int desc, int pop, int nsites)
 {
     chrom[ind].nseg = 1;
@@ -753,16 +772,16 @@ static int merge_chrom(int nsam, int nsites, int c1, int c2)
     struct seg *pseg;
     struct node *ptree;
 
-    seg1 = 0;
-    seg2 = 0;
+    seg1 = 0;   // Punteros que guardan el segmento de cada cromosoma, se van   
+    seg2 = 0;   // incrementando de a uno en la función chromo_has_segment()
 
     if (!(pseg = (struct seg *)calloc((unsigned)nsegs, sizeof(struct seg))))
         perror("alloc error.ca1");
 
     tseg = -1;
 
-    for (seg = 0, k = 0; k < nsegs; seg = seglst[seg].next, k++) {  // Recorre todos los segmentos de seglst
-        start = seglst[seg].beg;
+    for (seg = 0, k = 0; k < nsegs; seg = seglst[seg].next, k++) {  // Recorre todos los segmentos de seglst usando start que
+        start = seglst[seg].beg;                                    // apunta al inicio de cada segmento de seglst
         yes1 = chromo_has_segment(start, c1, &seg1);
         yes2 = chromo_has_segment(start, c2, &seg2);
         if (yes1 || yes2) {
@@ -829,7 +848,12 @@ static void add_chrom_links(int c)
     cleft += 1.0 - pow(pc, (double)chrom_links(c));
 }
 
-// Mueve el último cromosoma activo a la posición c
+/*
+ *	@brief Desplaza el último cromosoma del arreglo hacia la posición "c"
+ *  
+ *	@param[in] c : Posición a la que se quiere desplazar el último cromosoma
+ *	@return	void : Como resultado, el último cromosoma se desplaza a la posición "c" 
+ */
 static void move_last_chrom_to(int c)
 {
     chrom[c].pseg = chrom[nchrom - 1].pseg;
@@ -842,18 +866,16 @@ static void move_last_chrom_to(int c)
 
 /*
  *	@brief Responde a la pregunta ¿el cromosoma c contiene el segmento de seglst que empieza en start?
+ *  *psg es el segmento de chrom[c] que está siendo buscado.
  *  
- *  Guarda en ns la cantidad de segmentos del cromosoma c.
- *  Guarda en pseg el puntero al primer segmento del cromosoma c para luego recorrerlo.
- *  Dentro del bucle, recorre cada segmento del cromosoma y evalúa si el segmento cubre la posición. En
- *  caso de que exista el solapamiento, retorna 1, caso contrario retorna 0
+ *  El bucle principal verifica si el sitio start está acotado por end. Si esto es así, entonces el 
+ *  cromosoma tiene el sitio start y retorna verdadero, caso contrario, no lo tiene y retorna falso.
  *  
  *	@param[in] start : Posición que queremos ver si el cromosoma solapa
  *  @param[in] c : Es el índice del cromosoma que se quiere verificar 
  *  @param[in] psg : Puntero auxiliar para recorrer los segmentos de manera eficiente
- *	@return	int : 1 para indicar verdadero 
- *                0 para indicar falso
- *
+ *	@return	int : 1 para indicar encontrado
+ *                0 para indicar no encontrado
  */
 static int chromo_has_segment(int start, int c, int *psg)
 {
