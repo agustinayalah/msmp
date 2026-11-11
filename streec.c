@@ -649,8 +649,6 @@ static int find_crossover_chrom(long spot, int *pis, int *pend)
 /*
  *	@brief Es la función que efectúa el corte del cromosomas, se encarga de modificar las estructuras
  *         involucradas.
- * 
- *  
  *	
  *  @param[in] nsam : Es el tamaño de la muestra.
  *  @param[in] ic : Es el índice del cromosoma que se debe modificar.
@@ -713,14 +711,11 @@ static int crossover(int nsam, int ic, int is)
     cleft += 1.0 - pow(pc, len);
     len = (pseg2 + newsg - 1)->end - pseg2->beg;
     cleft += 1.0 - pow(pc, len);
-    if (!(chrom[ic].pseg =
-              (struct seg *)realloc(chrom[ic].pseg, (unsigned)(lsg * sizeof(struct seg)))))
+    if (!(chrom[ic].pseg = (struct seg *)realloc(chrom[ic].pseg, (unsigned)(lsg * sizeof(struct seg)))))
         perror(" realloc error. re2");
     if (in) {
         begs = pseg2->beg;
-        for (i = seg_in[segbeg]; (seglst[i].next != -1) && (begs >= seglst[seglst[i].next].beg);
-             i = seglst[i].next)
-            ;
+        for (i = seg_in[segbeg]; (seglst[i].next != -1) && (begs >= seglst[seglst[i].next].beg); i = seglst[i].next) ;
         if (begs != seglst[i].beg) /* new tree  */
             insert_new_tree(i, nsam);
     }
@@ -732,7 +727,7 @@ static int crossover(int nsam, int ic, int is)
  *  con una copia del árbol del segmento i.
  * 
  *  
- *  @param[in] i : .  
+ *  @param[in] i : Es el índice de seglst donde se debe insertar el nuevo segmento.  
  *  @param[in] nsam : Es el tamaño de la muestra.
  *	@return	void
  *
