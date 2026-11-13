@@ -49,4 +49,4 @@ for i in {1..6}; do
 done
 
 rm "$ROOT_DIR/ms-gprof" 
-rm "$ROOT_DIR/ms_perf"
+rm "$ROOT_DIR/ms-perf"
