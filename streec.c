@@ -30,6 +30,7 @@
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "ms.h"
 
@@ -50,6 +51,9 @@ double t, cleft, pc, lnpc;
 
 static unsigned seglimit = SEGINC;
 static unsigned maxchr;
+
+static struct seg *buf = NULL ;
+static int buf_cap = 0 ;
 
 struct seg {
     int beg;
@@ -786,8 +790,13 @@ static int merge_chrom(int nsam, int nsites, int c1, int c2)
     seg1 = 0;   // Punteros que guardan el segmento de cada cromosoma, se van   
     seg2 = 0;   // incrementando de a uno en la función chromo_has_segment()
 
-    if (!(pseg = (struct seg *)calloc((unsigned)nsegs, sizeof(struct seg))))
-        perror("alloc error.ca1");
+    if (nsegs > buf_cap){
+        free(buf) ;
+        buf_cap = nsegs + SEGINC ; 
+        if (!(buf = (struct seg *)malloc((unsigned)buf_cap * sizeof(struct seg))))
+            perror("Error malloc") ;
+    }
+    pseg = buf ;
 
     tseg = -1;
 
@@ -823,16 +832,17 @@ static int merge_chrom(int nsam, int nsites, int c1, int c2)
     remove_chrom_links(c1);
     free(chrom[c1].pseg);
     if (tseg < 0) {
-        free(pseg);
         move_last_chrom_to(c1);
         if (c2 == nchrom - 1)
             c2 = c1;
         nchrom--;
     } else {
-        if (!(pseg = (struct seg *)realloc(pseg, (unsigned)((tseg + 1) * sizeof(struct seg))))) // Ajusta el tamaño de pseg
-            perror(" realloc error. ca1");
-        chrom[c1].pseg = pseg;
-        chrom[c1].nseg = tseg + 1;
+        struct seg *nuevo = (struct seg *)malloc((unsigned)(tseg + 1) * sizeof(struct seg)) ;
+        if (nuevo == NULL)
+            perror("Error malloc") ;
+        memcpy(nuevo, pseg, (unsigned)(tseg + 1) * sizeof(struct seg));
+        chrom[c1].pseg = nuevo ;
+        chrom[c1].nseg = tseg + 1 ;
         add_chrom_links(c1);
     }
     remove_chrom_links(c2);
