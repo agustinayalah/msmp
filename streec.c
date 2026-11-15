@@ -30,6 +30,7 @@
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "ms.h"
 
@@ -69,6 +70,12 @@ struct node *ptree1, *ptree2, *ptree0;
 
 static struct segl *seglst = NULL;
 
+static int *seg_in = NULL ;
+static int seg_in_cap = 0 ;
+
+static struct seg *merge_buf = NULL ;
+static int merge_buf_cap = 0 ;
+
 struct segl *simulate_coalescent(const struct c_params *cp, int *pnsegs);
 static void allocate_buffers(int nsam);
 static void init_chromo(int ind, int desc, int pop, int nsites);
@@ -89,6 +96,7 @@ static void pick_2_chrom(int pop, const int config[], int *pc1, int *pc2);
 static int next_chrom_in_pop(int pop, int target, int i, int count);
 static int pick_2_random_numbers(int n, int *i, int *j);
 static int chrom_links(int c);
+static void check_seg_in(int nsites);
 
 /*
  *	@brief Es la función generadora de arboles coalescentes.
@@ -169,6 +177,9 @@ struct segl *simulate_coalescent(const struct c_params *cp, int *pnsegs)
     seglst[0].beg = 0;
     if (!(seglst[0].ptree = (struct node *)calloc((unsigned)(2 * nsam), sizeof(struct node))))
         perror("calloc error. se2");
+    seglst[0].next = -1 ;
+    check_seg_in(nsites) ;
+    seg_in[0] = 0 ;
     nnodes[0] = nsam - 1;
 
     nchrom = nsamin;                          /* adna */
@@ -651,7 +662,7 @@ static int find_crossover_chrom(long spot, int *pis, int *pend)
 static int crossover(int nsam, int ic, int is)
 {
     struct seg *pseg, *pseg2;
-    int i, lsg, lsgm1, newsg, jseg, k, in;
+    int i, lsg, lsgm1, newsg, jseg, k, in, segbeg; 
     double len;
 
     pseg = chrom[ic].pseg;
@@ -661,6 +672,7 @@ static int crossover(int nsam, int ic, int is)
     /* get seg # (jseg)  */
 
     for (jseg = 0; is >= (pseg + jseg)->end; jseg++);
+    segbeg = (pseg + jseg)->beg ;
 
     if (is >= (pseg + jseg)->beg)
         in = 1;
@@ -702,14 +714,11 @@ static int crossover(int nsam, int ic, int is)
     cleft += 1.0 - pow(pc, len);
     len = (pseg2 + newsg - 1)->end - pseg2->beg;
     cleft += 1.0 - pow(pc, len);
-    if (!(chrom[ic].pseg =
-              (struct seg *)realloc(chrom[ic].pseg, (unsigned)(lsg * sizeof(struct seg)))))
+    if (!(chrom[ic].pseg = (struct seg *)realloc(chrom[ic].pseg, (unsigned)(lsg * sizeof(struct seg)))))
         perror(" realloc error. re2");
     if (in) {
         begs = pseg2->beg;
-        for (i = 0, k = 0; (k < nsegs - 1) && (begs > seglst[seglst[i].next].beg - 1);
-             i = seglst[i].next, k++)
-            ;
+        for (i = seg_in[segbeg]; (seglst[i].next != -1) && (begs >= seglst[seglst[i].next].beg); i = seglst[i].next) ;
         if (begs != seglst[i].beg) /* new tree  */
             insert_new_tree(i, nsam);
     }
@@ -721,7 +730,7 @@ static int crossover(int nsam, int ic, int is)
  *  con una copia del árbol del segmento i.
  * 
  *  
- *  @param[in] i : .  
+ *  @param[in] i : Es el índice de seglst donde se debe insertar el nuevo segmento.  
  *  @param[in] nsam : Es el tamaño de la muestra.
  *	@return	void
  *
@@ -743,6 +752,7 @@ static void insert_new_tree(int i, int nsam)
     seglst[nsegs].next = seglst[i].next;
     seglst[i].next = nsegs;
     seglst[nsegs].beg = begs;
+    seg_in[begs] = nsegs ;
     if (!(seglst[nsegs].ptree =
               (struct node *)calloc((unsigned)(2 * nsam), sizeof(struct node))))
         perror("calloc error. re3.");
@@ -776,28 +786,46 @@ static void insert_new_tree(int i, int nsam)
 static int merge_chrom(int nsam, int nsites, int c1, int c2)
 {
     int yes1, yes2, seg1, seg2, seg;
-    int tseg, start, end, desc, k;
-    struct seg *pseg;
+    int tseg, start, end, desc, next, pos, n1, n2;
+    struct seg *pseg, *ps1, *ps2;
     struct node *ptree;
 
     seg1 = 0;   // Punteros que guardan el segmento de cada cromosoma, se van   
     seg2 = 0;   // incrementando de a uno en la función chromo_has_segment()
 
-    if (!(pseg = (struct seg *)calloc((unsigned)nsegs, sizeof(struct seg))))
-        perror("alloc error.ca1");
+    if (nsegs > merge_buf_cap){
+        free(merge_buf) ;
+        merge_buf_cap = nsegs + SEGINC ;
+        if (!(merge_buf = (struct seg *)malloc((unsigned) merge_buf_cap * sizeof(struct seg))))
+            perror("error malloc") ;
+    }
+    pseg = merge_buf ;
 
     tseg = -1;
 
-    for (seg = 0, k = 0; k < nsegs; seg = seglst[seg].next, k++) {  // Recorre todos los segmentos de seglst usando start que
-        start = seglst[seg].beg;                                    // apunta al inicio de cada segmento de seglst
-        yes1 = chromo_has_segment(start, c1, &seg1);
-        yes2 = chromo_has_segment(start, c2, &seg2);
-        if (yes1 || yes2) {
-            tseg++;
-            (pseg + tseg)->beg = seglst[seg].beg;
-            end = (k < nsegs - 1 ? seglst[seglst[seg].next].beg - 1 : nsites - 1);
-            (pseg + tseg)->end = end;
-
+    ps1 = chrom[c1].pseg ;
+    ps2 = chrom[c2].pseg ;
+    n1 = chrom[c1].nseg ;
+    n2 = chrom[c2].nseg ;
+ 
+    while ((seg1 < n1) || (seg2 < n2)){
+        if ((seg2 >= n2) || ((seg1 < n1) && ((ps1 + seg1)->beg <= (ps2 + seg2)->beg)))
+            pos = (ps1 + seg1)->beg ;
+        else
+            pos = (ps2 + seg2)->beg ;
+        
+        for (seg = seg_in[pos] ; seg != -1 ; seg = next){
+            next = seglst[seg].next ;
+            start = seglst[seg].beg ;
+            yes1 = chromo_has_segment(start, c1, &seg1) ;
+            yes2 = chromo_has_segment(start, c2, &seg2) ;
+            if (!(yes1 || yes2)){
+                break ;
+            }
+            tseg++ ;
+            (pseg + tseg)->beg = seglst[seg].beg ;
+            end = (next != -1 ? seglst[next].beg - 1 : nsites - 1);
+            (pseg + tseg)->end = end ;
             if (yes1 && yes2) {
                 nnodes[seg]++;
                 if (nnodes[seg] >= (2 * nsam - 2))  // Llegamos a la raíz?
@@ -810,25 +838,30 @@ static int merge_chrom(int nsam, int nsites, int c1, int c2)
                 desc = (chrom[c2].pseg + seg2)->desc;
                 (ptree + desc)->abv = nnodes[seg];
                 (ptree + nnodes[seg])->time = t;
-
+ 
             } else {
                 (pseg + tseg)->desc =
                     (yes1 ? (chrom[c1].pseg + seg1)->desc : (chrom[c2].pseg + seg2)->desc);
             }
         }
+        if (seg == -1){
+            break ;
+        }
     }
+
     remove_chrom_links(c1);
     free(chrom[c1].pseg);
     if (tseg < 0) {
-        free(pseg);
         move_last_chrom_to(c1);
         if (c2 == nchrom - 1)
             c2 = c1;
         nchrom--;
     } else {
-        if (!(pseg = (struct seg *)realloc(pseg, (unsigned)((tseg + 1) * sizeof(struct seg))))) // Ajusta el tamaño de pseg
-            perror(" realloc error. ca1");
-        chrom[c1].pseg = pseg;
+        struct seg *nuevo = (struct seg *)malloc((unsigned)(tseg + 1) * sizeof(struct seg)) ;
+        if (nuevo == NULL)
+            perror("error malloc") ;
+        memcpy(nuevo, pseg, (unsigned)(tseg + 1) * sizeof(struct seg));
+        chrom[c1].pseg = nuevo;
         chrom[c1].nseg = tseg + 1;
         add_chrom_links(c1);
     }
@@ -944,4 +977,14 @@ static int chrom_links(int c)
     ns = chrom[c].nseg - 1;
 
     return ((chrom[c].pseg + ns)->end - (chrom[c].pseg)->beg);
+}
+
+static void check_seg_in(int nsites)
+{
+    if (nsites > seg_in_cap){
+        free(seg_in) ;
+        if (!(seg_in = (int *) malloc((unsigned)nsites * sizeof(int))))
+            ERROR("malloc error. check_seg_in") ;
+        seg_in_cap = nsites ;
+    }
 }
