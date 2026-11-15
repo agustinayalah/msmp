@@ -69,9 +69,6 @@ struct node *ptree1, *ptree2, *ptree0;
 
 static struct segl *seglst = NULL;
 
-/* ---- funciones externas (rand1.c, ms.c) ---- */
-extern double ran1(void);
-
 struct segl *simulate_coalescent(const struct c_params *cp, int *pnsegs);
 static void allocate_buffers(int nsam);
 static void init_chromo(int ind, int desc, int pop, int nsites);
@@ -84,14 +81,14 @@ static int find_crossover_chrom(long spot, int *pis, int *pend);
 static int crossover(int nsam, int ic, int is);
 static void insert_new_tree(int i, int nsam);
 static int merge_chrom(int nsam, int nsites, int c1, int c2);
-static void remove_chrom_links(int c);
-static void add_chrom_links(int c);
-static void move_last_chrom_to(int c);
+static inline __attribute__((always_inline)) void remove_chrom_links(int c);
+static inline __attribute__((always_inline)) void add_chrom_links(int c);
+static inline __attribute__((always_inline)) void move_last_chrom_to(int c);
 static int chromo_has_segment(int start, int c, int *psg);
-static void pick_2_chrom(int pop, const int config[], int *pc1, int *pc2);
+static inline __attribute__((always_inline)) void pick_2_chrom(int pop, const int config[], int *pc1, int *pc2);
 static int next_chrom_in_pop(int pop, int target, int i, int count);
 static int pick_2_random_numbers(int n, int *i, int *j);
-static int chrom_links(int c);
+static inline __attribute__((always_inline)) int chrom_links(int c);
 
 /*
  *	@brief Es la función generadora de arboles coalescentes.
@@ -641,9 +638,9 @@ static int find_crossover_chrom(long spot, int *pis, int *pend)
 
 /*
  *	@brief Es la función que efectúa el corte del cromosomas, se encarga de modificar las estructuras
- *         involucradas.
+ *  involucradas.
  * 
- *  
+ *   
  *	
  *  @param[in] nsam : Es el tamaño de la muestra.
  *  @param[in] ic : Es el índice del cromosoma que se debe modificar.

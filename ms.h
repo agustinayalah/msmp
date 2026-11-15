@@ -52,7 +52,12 @@ struct segl {
     int next;
 };
 
-double ran1(void);
+#include <stdlib.h>
+
+static inline __attribute__((always_inline)) double ran1(void)
+{
+    return (drand48());
+}
 void seedit(const char *flag);
 int commandlineseed(char *const *seeds);
 struct segl *simulate_coalescent(const struct c_params *cp, int *pnsegs);

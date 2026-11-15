@@ -3,14 +3,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-double ran1(void);
 void seedit(const char *flag);
 int commandlineseed(char *const *seeds);
-
-double ran1()
-{
-    return (drand48());
-}
 
 void seedit(const char *flag)
 {
