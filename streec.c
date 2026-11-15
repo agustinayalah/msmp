@@ -206,7 +206,7 @@ struct segl *simulate_coalescent(const struct c_params *cp, int *pnsegs)
         eflag = 0;
 
         if (prect > 0.0) { /* cross-over or gene conversion */
-            while ((rdum = ran1()) == 0.0) ;
+            while (UNLIKELY((rdum = ran1()) == 0.0)) ;
             ttemp = -log(rdum) / prect;
             if ((eflag == 0) || (ttemp < tmin)) {
                 tmin = ttemp;
@@ -215,7 +215,7 @@ struct segl *simulate_coalescent(const struct c_params *cp, int *pnsegs)
             }
         }
         if (mig > 0.0) { /* migration   */
-            while ((rdum = ran1()) == 0.0) ;
+            while (UNLIKELY((rdum = ran1()) == 0.0)) ;
             ttemp = -log(rdum) / mig;
             if ((eflag == 0) || (ttemp < tmin)) {
                 tmin = ttemp;
@@ -227,7 +227,7 @@ struct segl *simulate_coalescent(const struct c_params *cp, int *pnsegs)
         for (pop = 0; pop < npop; pop++) { /* coalescent */
             coal_prob = ((double)config[pop]) * (config[pop] - 1.);
             if (coal_prob > 0.0) {
-                while ((rdum = ran1()) == .0) ;
+                while (UNLIKELY((rdum = ran1()) == .0)) ;
                 if (alphag[pop] == 0) {
                     ttemp = -log(rdum) * size[pop] / coal_prob;
                     if ((eflag == 0) || (ttemp < tmin)) {
@@ -251,13 +251,13 @@ struct segl *simulate_coalescent(const struct c_params *cp, int *pnsegs)
             }
         }
 
-        if ((eflag == 0) && (nextevent == NULL)) {
+        if (UNLIKELY((eflag == 0) && (nextevent == NULL))) {
             fprintf(stderr,
                     " infinite time to next event. Negative growth rate in last time interval or "
                     "non-communicating subpops.\n");
             exit(0);
         }
-        if (((eflag == 0) && (nextevent != NULL)) ||
+        if (UNLIKELY(((eflag == 0) && (nextevent != NULL))) ||
             ((nextevent != NULL) && ((t + tmin) >= nextevent->time))) {
             t = nextevent->time;
             switch (nextevent->detype) {
@@ -674,14 +674,14 @@ static int crossover(int nsam, int ic, int is)
     /* copy last part of chrom to nchrom  */
 
     nchrom++;
-    if ( (unsigned int)nchrom >= maxchr) {
+    if (UNLIKELY((unsigned int)nchrom >= maxchr)) {
         maxchr += CHROMOSOME_INC;
         chrom = (struct chromo *)realloc(chrom, (unsigned)(maxchr * sizeof(struct chromo)));
         if (chrom == NULL)
             perror("malloc error. segtre2");
     }
-    if (!(pseg2 = chrom[nchrom - 1].pseg =
-              (struct seg *)calloc((unsigned)newsg, sizeof(struct seg))))
+    if (UNLIKELY(!(pseg2 = chrom[nchrom - 1].pseg =
+              (struct seg *)calloc((unsigned)newsg, sizeof(struct seg)))))
         ERROR(" alloc error. re1");
     chrom[nchrom - 1].nseg = newsg;
     chrom[nchrom - 1].pop = chrom[ic].pop;
@@ -733,7 +733,7 @@ static void insert_new_tree(int i, int nsam)
 {
     int k;
 
-    if ( (unsigned int)nsegs >= seglimit) {
+    if (UNLIKELY((unsigned int)nsegs >= seglimit)) {
         seglimit += SEGINC;
         nnodes = (int *)realloc(nnodes, (unsigned)(sizeof(int) * seglimit));
         if (nnodes == NULL)

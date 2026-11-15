@@ -52,6 +52,9 @@ struct segl {
     int next;
 };
 
+#define LIKELY(x) __builtin_expect(!!(x), 1)
+#define UNLIKELY(x) __builtin_expect(!!(x), 0)
+
 double ran1(void);
 void seedit(const char *flag);
 int commandlineseed(char *const *seeds);
