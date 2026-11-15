@@ -54,10 +54,15 @@ struct segl {
 
 #include <stdlib.h>
 
+#define LIKELY(x) __builtin_expect(!!(x), 1)
+#define UNLIKELY(x) __builtin_expect(!!(x), 0)
+
 static inline __attribute__((always_inline)) double ran1(void)
 {
     return (drand48());
 }
+
+double ran1(void);
 void seedit(const char *flag);
 int commandlineseed(char *const *seeds);
 struct segl *simulate_coalescent(const struct c_params *cp, int *pnsegs);

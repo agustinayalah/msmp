@@ -404,7 +404,7 @@ static double segment_tree_time(const struct node *ptree, int nsam, int mfreq)
 
 static void ensure_sites_capacity(int needed, int nsam, char **list)
 {
-    if ( (unsigned int)needed >= maxsites) {
+    if (UNLIKELY((unsigned int)needed >= maxsites)) {
         maxsites = needed + SITESINC;
         posit = (double *)realloc(posit, maxsites * sizeof(double));
         agevec = (double *)realloc(agevec, maxsites * sizeof(double));
