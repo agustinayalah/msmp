@@ -77,7 +77,7 @@ static void migration_event(int *config, double *const *migration_matrix, int np
 static int recombination_event(int nsam);
 static int conv_left(int nsam);
 static int conv_inside(int nsam, int nsites);  // Conversion left y conversion inside
-static int find_crossover_chrom(long spot, int *pis, int *pend);
+static inline __attribute__((always_inline)) int find_crossover_chrom(long spot, int *pis, int *pend);
 static int crossover(int nsam, int ic, int is);
 static void insert_new_tree(int i, int nsam);
 static int merge_chrom(int nsam, int nsites, int c1, int c2);
@@ -85,10 +85,10 @@ static inline __attribute__((always_inline)) void remove_chrom_links(int c);
 static inline __attribute__((always_inline)) void add_chrom_links(int c);
 static inline __attribute__((always_inline)) void move_last_chrom_to(int c);
 static int chromo_has_segment(int start, int c, int *psg);
-static inline __attribute__((always_inline)) void pick_2_chrom(int pop, const int config[], int *pc1, int *pc2);
+static void pick_2_chrom(int pop, const int config[], int *pc1, int *pc2);
 static int next_chrom_in_pop(int pop, int target, int i, int count);
 static int pick_2_random_numbers(int n, int *i, int *j);
-static inline __attribute__((always_inline)) int chrom_links(int c);
+static int chrom_links(int c);
 
 /*
  *	@brief Es la función generadora de arboles coalescentes.
