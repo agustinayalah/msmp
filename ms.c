@@ -239,7 +239,7 @@ int main(int argc, char *argv[])
  *
  *	@param[out]	list : Lista de segmentos de ADN de los individuos a completar
  *	@param[out]	pprobss : La probailidad de que bajo una tasa de mutación theeta se den n
- *segsites fijos
+ *  segsites fijos
  *	@param[out]	ptmrca : Tiempo en llegar al most recent common ancester
  *	@param[out]	pttot : Tiempo total para la coalescencia del arbol
  *	@return	ns : Cantidad de sitios segregantes
@@ -268,7 +268,20 @@ static int generate_sample(char **list, double *pprobss, double *ptmrca, double 
     return (ns);
 }
 
-// Imprime el árbol, se activa con la opción -T 
+/*
+ *	@brief Imprime el/los árboles de genealogía. Se activa con la opción -T.
+ *
+ *  Empieza imprimiendo la longitud de los segmentos. Por ejemplo, si el locus
+ *  tiene una longitud [0,99] pero se dividió en 49, entonces imprimirá las longitudes
+ *  [50] [50].
+ *  Luego, para cada segmento invoca la función print_tree() que es la función que 
+ *  imprime el arbol correspondiente a cada segmento de la lista seglst. 
+ * 
+ *	@param[in] seglst : Lista global de segmentos del locus.
+ *  @param[in] nsegs : Cantidad de segmentos en los que se dividió el locus.
+ *	@return	void 
+ *
+ */
 static void print_segment_trees(const struct segl *seglst, int nsegs)
 {
     int seg, k, start, end, len;
@@ -389,6 +402,7 @@ static int mutate_fixed_segsites(const struct segl *seglst, int nsegs, char **li
     return (ns);
 }
 
+// Calcula el final del segmento correspondiente al segmento seg. 
 static int segment_end(const struct segl *seglst, int seg, int k, int nsegs, int nsites)
 {
     return (k < nsegs - 1 ? seglst[seglst[seg].next].beg - 1 : nsites - 1);
@@ -1125,6 +1139,17 @@ static double tree_time_mfreq(const struct node *ptree, int nsam, int mfreq)
     return (t);
 }
 
+/*
+ *	@brief Imprime el árbol de coalescencia de un segmento en particular.
+ *  
+ *  
+ * 
+ *	@param[in] ptree : Es el puntero al arbol del segmento de seglst que 
+ *  se quiere imprimir.
+ *  @param[in] nsam : Es el tamaño de la muestra.
+ *	@return	void 
+ *
+ */
 static void print_tree(const struct node *ptree, int nsam)
 {
     int i, *left_child, *right_child;

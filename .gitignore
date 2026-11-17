@@ -11,4 +11,4 @@ sample_stats
 tests/cases/statistic/mspar/case2_mspar.txt
 tests/cases/statistic/mspar/case3_mspar.txt
 
-test/cases/profiling
+test/cases/profiling/
