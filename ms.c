@@ -302,9 +302,9 @@ static void print_segment_trees(const struct segl *seglst, int nsegs)
             start = seglst[seg].beg;
             len = end - start + 1;
             // fprintf(stdout, "[%d]", len);
-            tree_buffer[tree_len++] = "[" ; 
+            tree_buffer[tree_len++] = '[' ; 
             tree_int_to_char(len);
-            tree_buffer[tree_len++] = "]" ;
+            tree_buffer[tree_len++] = ']' ;
         }
         print_tree(seglst[seg].ptree, nsam);
         if ((pars.mp.segsitesin == 0) && (pars.mp.theta == 0.0) && (pars.mp.timeflag == 0))
@@ -333,7 +333,7 @@ static void tree_int_to_char(int v)
 static void tree_double_to_char(double v)
 {
     long long m = llrint(v * 1000.0) ;
-    tree_int((int)(m / 1000)) ;
+    tree_int_to_char((int)(m / 1000)) ;
     tree_buffer[tree_len++] = '.' ;
     tree_buffer[tree_len++] = '0' + (m % 1000) / 100 ;
     tree_buffer[tree_len++] = '0' + (m % 100) / 10 ;
@@ -1236,26 +1236,26 @@ static void print_parenthesis(const struct node *ptree, const int *left_child, c
     if (left_child[noden] == -1) {
         // printf("%d:%5.3lf", noden + 1, branch_length(ptree, noden)); /* adna */
         tree_int_to_char(noden + 1);
-        tree_buffer[tree_len++] = ":" ;
+        tree_buffer[tree_len++] = ':' ;
         tree_double_to_char(branch_length(ptree, noden)) ;
         
     } else {
         // printf("(");
-        tree_buffer[tree_len++] = "(" ;
+        tree_buffer[tree_len++] = '(' ;
         print_parenthesis(ptree, left_child, right_child, left_child[noden]);
         //printf(",");
-        tree_buffer[tree_len++] = "," ;
+        tree_buffer[tree_len++] = ',' ;
         print_parenthesis(ptree, left_child, right_child, right_child[noden]);
         tree_check() ;
         if ((ptree + noden)->abv == 0) {
             // printf(");\n");
-            tree_buffer[tree_len++] = ")" ;
-            tree_buffer[tree_len++] = ";" ;
-            tree_buffer[tree_len++] = "\n" ;
+            tree_buffer[tree_len++] = ')' ;
+            tree_buffer[tree_len++] = ';' ;
+            tree_buffer[tree_len++] = '\n' ;
         } else {
             // printf("):%5.3lf", branch_length(ptree, noden));
-            tree_buffer[tree_len++] = ")" ;
-            tree_buffer[tree_len++] = ":" ;
+            tree_buffer[tree_len++] = ')' ;
+            tree_buffer[tree_len++] = ':' ;
             tree_double_to_char(branch_length(ptree, noden)) ;
         }
     }
