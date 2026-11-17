@@ -109,6 +109,8 @@ Thanks to J. Liechty and K. Thornton.
 #define OUTPUT_PRECISION 4          // Representa la cantidad de decimales para las posiciones
 #define MIN_NSITES 2
 #define MIN_MFREQ 2
+#define TREE_BUFFER_SIZE 66000
+#define TREE_BUFFER_MARGIN 64
 
 unsigned maxsites = SITESINC;
 
@@ -118,6 +120,9 @@ double alleleage;
 double segfac;
 int count, ntbs, nseeds;
 struct params pars;
+
+static char tree_buffer[TREE_BUFFER_SIZE] ;
+static int tree_len = 0 ;
 
 // Prototypes
 
@@ -161,6 +166,10 @@ static void order(int n, double pbuf[]);
 static void ranvec(int n, double pbuf[]);
 static int poisso(double u);
 static double gasdev(double m, double v);
+static void tree_clean(void);
+static void tree_check(void);
+static void tree_int_to_char(int v);
+static void tree_double_to_char(double v);
 
 int main(int argc, char *argv[])
 {
@@ -292,12 +301,43 @@ static void print_segment_trees(const struct segl *seglst, int nsegs)
             end = segment_end(seglst, seg, k, nsegs, nsites);
             start = seglst[seg].beg;
             len = end - start + 1;
-            fprintf(stdout, "[%d]", len);
+            // fprintf(stdout, "[%d]", len);
+            tree_buffer[tree_len++] = "[" ; 
+            tree_int_to_char(len);
+            tree_buffer[tree_len++] = "]" ;
         }
         print_tree(seglst[seg].ptree, nsam);
         if ((pars.mp.segsitesin == 0) && (pars.mp.theta == 0.0) && (pars.mp.timeflag == 0))
             free(seglst[seg].ptree);
     }
+    tree_clean() ;
+}
+
+// Esta función parsea un entero v a char para poder guardarlo en tree_buffer
+static void tree_int_to_char(int v)
+{
+    char tmp[12];
+    int i = 0;
+
+    do{
+        tmp[i++] = '0' + v % 10 ;
+        v = v / 10 ;
+    } while (v > 0) ;
+
+    while (i > 0){
+        tree_buffer[tree_len++] = tmp[--i] ; 
+    }
+}
+
+//Esta función parsea un double v a char para poder guardarlo en tree_buffer
+static void tree_double_to_char(double v)
+{
+    long long m = llrint(v * 1000.0) ;
+    tree_int((int)(m / 1000)) ;
+    tree_buffer[tree_len++] = '.' ;
+    tree_buffer[tree_len++] = '0' + (m % 1000) / 100 ;
+    tree_buffer[tree_len++] = '0' + (m % 100) / 10 ;
+    tree_buffer[tree_len++] = '0' + m % 10 ;
 }
 
 // Usando la opción -L calcula el tiempo al MRCA y la longitud total del árbol 
@@ -1192,17 +1232,31 @@ static void print_tree(const struct node *ptree, int nsam)
  */
 static void print_parenthesis(const struct node *ptree, const int *left_child, const int *right_child, int noden)
 {
+    tree_check() ;
     if (left_child[noden] == -1) {
-        printf("%d:%5.3lf", noden + 1, branch_length(ptree, noden)); /* adna */
+        // printf("%d:%5.3lf", noden + 1, branch_length(ptree, noden)); /* adna */
+        tree_int_to_char(noden + 1);
+        tree_buffer[tree_len++] = ":" ;
+        tree_double_to_char(branch_length(ptree, noden)) ;
+        
     } else {
-        printf("(");
+        // printf("(");
+        tree_buffer[tree_len++] = "(" ;
         print_parenthesis(ptree, left_child, right_child, left_child[noden]);
-        printf(",");
+        //printf(",");
+        tree_buffer[tree_len++] = "," ;
         print_parenthesis(ptree, left_child, right_child, right_child[noden]);
+        tree_check() ;
         if ((ptree + noden)->abv == 0) {
-            printf(");\n");
+            // printf(");\n");
+            tree_buffer[tree_len++] = ")" ;
+            tree_buffer[tree_len++] = ";" ;
+            tree_buffer[tree_len++] = "\n" ;
         } else {
-            printf("):%5.3lf", branch_length(ptree, noden));
+            // printf("):%5.3lf", branch_length(ptree, noden));
+            tree_buffer[tree_len++] = ")" ;
+            tree_buffer[tree_len++] = ":" ;
+            tree_double_to_char(branch_length(ptree, noden)) ;
         }
     }
 }
@@ -1217,6 +1271,19 @@ static double branch_length(const struct node *ptree, int i)
 static double random_age_in_branch(const struct node *ptree, int i)
 {
     return (ptree + i)->time + ran1() * branch_length(ptree, i);
+}
+
+static void tree_clean(void)
+{
+    fwrite(tree_buffer, 1, tree_len, stdout);
+    tree_len = 0 ;
+}
+
+static void tree_check(void)
+{
+    if (tree_len > TREE_BUFFER_SIZE - TREE_BUFFER_MARGIN){
+        tree_clean() ;
+    }
 }
 
 /***  pick_branch : returns a random branch from the tree. The probability of picking
