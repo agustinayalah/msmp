@@ -229,7 +229,7 @@ int main(int argc, char *argv[])
         seedit("end");
 }
 
-/*
+/**
  *	@brief Genera los arboles de coalescencia y aplica las mutaciones.
  *
  *	Invoca a simulate_coalescent() que guarda en seglst el arbol de coalescencia. Luego en función de las
@@ -268,7 +268,7 @@ static int generate_sample(char **list, double *pprobss, double *ptmrca, double 
     return (ns);
 }
 
-/*
+/**
  *	@brief Imprime el/los árboles de genealogía. Se activa con la opción -T.
  *
  *  Empieza imprimiendo la longitud de los segmentos. Por ejemplo, si el locus
@@ -426,8 +426,8 @@ static void ensure_sites_capacity(int needed, int nsam, char **list)
     }
 }
 
-//  
-/*
+
+/**
  *	@brief Reserva espacio para la matriz de gametos y los vectores de posiciones y edades
  *
  *	Si no se fija la cantidad de sitios segregantes con -s, entonces reserva con un máximo predefinido 
@@ -517,7 +517,7 @@ static void bigger_list(int nsam, char **list)
     }
 }
 
-/*
+/**
  *	@brief Reserva memoria de manera dinámica para la matríz que guarda las secuencias de ADN
  *  
  *  Asigna espacio para un arreglo de punteros donde la cantidad de filas son la cantidad de 
@@ -551,7 +551,7 @@ static void locate(int n, double beg, double len, double *ptr)
         ptr[i] = beg + ptr[i] * len;
 }
 
-/*
+/**
  *	@brief Obtiene los parámetros de la simulación, los valida y procesa.
  *
  *  Analiza los parámetros validando la cantidad de argumentos que requiere el programa. Los guarda 
@@ -1139,7 +1139,7 @@ static double tree_time_mfreq(const struct node *ptree, int nsam, int mfreq)
     return (t);
 }
 
-/*
+/**
  *	@brief Imprime el árbol de coalescencia de un segmento en particular.
  *  
  *  Se completa la lista de hijos izquierdo y derecho correspondiente a cada
