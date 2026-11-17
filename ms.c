@@ -272,8 +272,8 @@ static int generate_sample(char **list, double *pprobss, double *ptmrca, double 
  *	@brief Imprime el/los árboles de genealogía. Se activa con la opción -T.
  *
  *  Empieza imprimiendo la longitud de los segmentos. Por ejemplo, si el locus
- *  tiene una longitud [0,99] pero se dividió en 49, entonces imprimirá las longitudes
- *  [50] [50].
+ *  tiene una longitud [0,99] pero se dividió en el sitio 49, entonces imprimirá
+ *  las longitudes [50] [50].
  *  Luego, para cada segmento invoca la función print_tree() que es la función que 
  *  imprime el arbol correspondiente a cada segmento de la lista seglst. 
  * 
@@ -1142,13 +1142,14 @@ static double tree_time_mfreq(const struct node *ptree, int nsam, int mfreq)
 /*
  *	@brief Imprime el árbol de coalescencia de un segmento en particular.
  *  
- *  
+ *  Se completa la lista de hijos izquierdo y derecho correspondiente a cada
+ *  nodo intermedio. Le pasa la lista a print_parenthesis() que recorre de 
+ *  manera recursiva e imprime.
  * 
  *	@param[in] ptree : Es el puntero al arbol del segmento de seglst que 
  *  se quiere imprimir.
  *  @param[in] nsam : Es el tamaño de la muestra.
  *	@return	void 
- *
  */
 static void print_tree(const struct node *ptree, int nsam)
 {
@@ -1173,7 +1174,22 @@ static void print_tree(const struct node *ptree, int nsam)
     free(right_child);
 }
 
-// Función para imprimir los arboles en formato de Newick
+/** 
+ *	@brief Imprime efectivamente los árboles en formato Newick.
+ *  
+ *  Recorre de manera recursiva los nodos de ptree del arbol del segmento.
+ *  Si se encuentra en una hoja, entonces imprime el identificador del nodo y 
+ *  el tiempo que le tomó para coalescer en el nodo padre. 
+ *  Si no se encuentra en una hoja, entonces imprime el inicio del paréntesis, 
+ *  y se llama recursivamente hasta obtener la información de las hojas. Si llega
+ *  a la raíz (el superior del nodo es 0), entonces se imprime el último caracter, 
+ *  si no es la raíz, imprime el tiempo que le tomó coalescer hasta el próximo nodo superior.
+ *  
+ *	@param[in] ptree : Es el arbol del segmento que está recorriendo actualmente.
+ *  @param[in] left_child : Lista de hijos izquierdos.
+ *  @param[in] right_child : Lista de hijos derechos.
+ *  @param[in] noden : Cantidad de nodos exceptuando la raíz del arbol.
+ */
 static void print_parenthesis(const struct node *ptree, const int *left_child, const int *right_child, int noden)
 {
     if (left_child[noden] == -1) {
