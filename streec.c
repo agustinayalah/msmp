@@ -98,7 +98,7 @@ static int pick_2_random_numbers(int n, int *i, int *j);
 static int chrom_links(int c);
 static void check_seg_in(int nsites);
 
-/*
+/**
  *	@brief Es la función generadora de arboles coalescentes.
  *
  *	En el bucle determina de manera probabilística cual será el proximo evento a ejecutar (a excepción de los
@@ -437,7 +437,7 @@ struct segl *simulate_coalescent(const struct c_params *cp, int *pnsegs)
     return (seglst);
 }
 
-/*
+/**
  *	@brief Reserva la memoria inicial de las estructuras chrom, nnodes y seglst. 
  *
  *  Esta función se ejecuta solamente si el puntero correspondiente es NULL.
@@ -476,7 +476,7 @@ static void allocate_buffers(int nsam)
     }
 }
 
-/*
+/**
  *	@brief Inicializa el cromosoma (linaje) de la posición ind en el arreglo chrom. 
  *
  *  Se reserva memoria para un solo segmento (nseg = 1) que cubre todo el locus que va desde 
@@ -546,7 +546,7 @@ static void migration_event(int *config, double *const *migration_matrix, int np
     chrom[migrant].pop = source_pop;
 }
 
-/*
+/**
  *	@brief Es la subrutina que ejecuta la recombinación : Elige un cromosoma y lo divide en dos partes. 
  *  Si el punto de corte es un lugar nuevo, un nuevo segmento se agrega a seglst y se asigna un nuevo arbol 
  *  para ese segmento.
@@ -585,7 +585,7 @@ static int conv_left(int nsam)
     return (ic);
 }
 
-/*
+/**
  *	@brief 
  *	
  *  @param[in] spot : Es el número de enlace aleatorio que representa la posición global a lo largo de 
@@ -616,7 +616,7 @@ static int conv_inside(int nsam, int nsites)
     return (ic);
 }
 
-/*
+/**
  *	@brief Busca la posición del segmento a cortar (spot) y guarda la posición física del punto y el 
  *         final del segmento del cromosoma que se seleccionó.
  *	
@@ -647,7 +647,7 @@ static int find_crossover_chrom(long spot, int *pis, int *pend)
     return (ic);
 }
 
-/*
+/**
  *	@brief Es la función que efectúa el corte del cromosomas, se encarga de modificar las estructuras
  *  involucradas.
  * 
@@ -725,7 +725,7 @@ static int crossover(int nsam, int ic, int is)
     return (ic);
 }
 
-/*
+/**
  *	@brief Agrega a seglst un segmento nuevo que empieza en begs ubicado después del segmento i 
  *  con una copia del árbol del segmento i.
  * 
@@ -769,7 +769,7 @@ static void insert_new_tree(int i, int nsam)
 //   common ancestor subroutine
 //   Pick two chromosomes and merge them. Update trees if necessary.
 
-/*
+/**
  *	@brief Subrutina que ejecuta el evento de coalescencia o ancestro común. Actualiza arboles si es 
  *  necesario.
  *  
@@ -889,7 +889,7 @@ static void add_chrom_links(int c)
     cleft += 1.0 - pow(pc, (double)chrom_links(c));
 }
 
-/*
+/**
  *	@brief Desplaza el último cromosoma del arreglo hacia la posición "c"
  *  
  *	@param[in] c : Posición a la que se quiere desplazar el último cromosoma
@@ -905,7 +905,7 @@ static void move_last_chrom_to(int c)
 // chromo_has_segment: Does chromosome c contain the segment on seglst which starts at
 //            start? *psg is the segment of chrom[c] at which one is to begin looking.  
 
-/*
+/**
  *	@brief Responde a la pregunta ¿el cromosoma c contiene el segmento de seglst que empieza en start?
  *  *psg es el segmento de chrom[c] que está siendo buscado.
  *  
