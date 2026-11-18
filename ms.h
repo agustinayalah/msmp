@@ -57,12 +57,15 @@ struct segl {
 #define LIKELY(x) __builtin_expect(!!(x), 1)
 #define UNLIKELY(x) __builtin_expect(!!(x), 0)
 
+extern unsigned short ms_xsubi[3];
+#pragma omp threadprivate(ms_xsubi)
+
 static inline __attribute__((always_inline)) double ran1(void)
 {
-    return (drand48());
+    return erand48(ms_xsubi);
 }
 
-double ran1(void);
+void ms_seed_thread(void);
 void seedit(const char *flag);
 int commandlineseed(char *const *seeds);
 struct segl *simulate_coalescent(const struct c_params *cp, int *pnsegs);

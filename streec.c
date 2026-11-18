@@ -76,6 +76,10 @@ static int seg_in_cap = 0 ;
 static struct seg *merge_buf = NULL ;
 static int merge_buf_cap = 0 ;
 
+#pragma omp threadprivate(nchrom, begs, nsegs, nchrom_links, t, cleft, pc, lnpc, \
+                          nnodes, seglimit, maxchr, chrom, ptree1, ptree2, \
+                          ptree0, seglst, seg_in, seg_in_cap, merge_buf, merge_buf_cap)
+
 struct segl *simulate_coalescent(const struct c_params *cp, int *pnsegs);
 static void allocate_buffers(int nsam);
 static void init_chromo(int ind, int desc, int pop, int nsites);

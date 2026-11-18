@@ -124,9 +124,11 @@ struct params pars;
 static char tree_buffer[TREE_BUFFER_SIZE] ;
 static int tree_len = 0 ;
 
+static FILE *tree_output = NULL;
+#pragma omp threadprivate(maxsites, posit, agevec, alleleage, tree_buffer, tree_len, tree_output)
 // Prototypes
 
-static int generate_sample(char **list, double *pprobss, double *ptmrca, double *pttot);
+static int generate_sample(FILE *pf, char **list, double *pprobss, double *ptmrca, double *pttot);
 static void count_nodes(struct node *ptree, int nsam);
 static void bigger_list(int nsam, char **list);
 static char **cmatrix(int nsam, int len);
@@ -140,7 +142,7 @@ static char **allocate_buffers(void);
 static void print_sample(FILE *pf, char *const *list, int segsites, double probss);
 static inline __attribute__((always_inline)) int segment_end(const struct segl *seglst, int seg, int k, int nsegs, int nsites);
 static inline __attribute__((always_inline)) double segment_tree_time(const struct node *ptree, int nsam, int mfreq);
-static void print_segment_trees(const struct segl *seglst, int nsegs);
+static void print_segment_trees(FILE *pf, const struct segl *seglst, int nsegs);
 static void compute_tree_times(const struct segl *seglst, int nsegs, double *ptmrca, double *pttot);
 static int mutate_with_theta(const struct segl *seglst, int nsegs, char **list);
 static int mutate_fixed_segsites(const struct segl *seglst, int nsegs, char **list, double *pprobss);
@@ -170,6 +172,7 @@ static void tree_clean(void);
 static void tree_check(void);
 static void tree_int_to_char(int v);
 static void tree_double_to_char(double v);
+static void run_one_replicate(FILE *pf, char **list);
 
 int main(int argc, char *argv[])
 {
@@ -205,37 +208,93 @@ int main(int argc, char *argv[])
 
     pf = stdout;
 
-    list = allocate_buffers();
+    /*
+        segfac solo depende de que segsitesin y theta sea > 0. 
+        Dejando de lado el caso con parámetros diferidos (en el cual puede cambiar), cc se mantiene fijo
+    */
+    if ( (pars.mp.segsitesin > 0 ) && (pars.mp.theta > 0.0 ) ){
+		segfac = 1.0 ;
+		for(i= pars.mp.segsitesin; i > 1; i--) 
+			segfac *= i ;
+	}
 
-    while (howmany - count++) {
-        if ((ntbs > 0) && (count > 1)) {
-            for (k = 0; k < ntbs; k++) {
-                if (scanf(" %s", tbsparamstrs[k]) == EOF) {
-                    if (!pars.commandlineseedflag)
-                        seedit("end");
-                    exit(0);
-                }
+    /*
+        Si se usan parámetros diferidos, la ejecución resulta equivalente a la secuencial, por lo que
+        en caso de que se active esa opción, mantenemos el flujo de ejecución original.
+        Caso contrario, se ejecuta de manera paralela.
+    */
+    
+    if (ntbs > 0){
+        list = allocate_buffers() ;
+
+        while ( howmany-count++ ) {
+		   if(count > 1){
+				for( k=0; k<ntbs; k++){ 
+				    if( scanf(" %s", tbsparamstrs[k]) == EOF ){
+				       if( !pars.commandlineseedflag ) seedit( "end" );
+					   exit(0);
+					}
+				}
+				getpars(argc, argv, &howmany) ;
+		   }
+ 
+			fprintf(pf,"\n//");
+			for (k=0; k< ntbs; k++) fprintf(pf,"\t%s", tbsparamstrs[k]) ;
+			fprintf(pf,"\n");
+ 
+			run_one_replicate(pf, list) ;
+        }
+    }
+    else{  
+        // Buffer de salida para mantener salidas consistentes y ordenadas
+
+        char **out_bufs = (char **) calloc( (size_t) howmany, sizeof(char *) );
+		if( out_bufs == NULL ) perror("calloc error. main. out_bufs");
+
+        #pragma omp parallel
+        {
+            char **tlist ;
+            ms_seed_thread() ;
+            tlist = allocate_buffers() ;
+
+            #pragma omp for schedule(dynamic)
+            for (i=0 ; i < howmany ; i++){
+                char *buf = NULL ;
+				size_t bufsize = 0 ;
+				FILE *mf = open_memstream(&buf, &bufsize) ;
+				if (mf == NULL) perror("open_memstream error. main");
+ 
+				fprintf(mf,"\n//\n") ;
+				run_one_replicate(mf, tlist) ;
+ 
+				fclose(mf) ;
+				out_bufs[i] = buf ;
             }
-            getpars(argc, argv, &howmany);
+            
+        }   // Termina la región paralela, join de hilos
+        for (i=0 ; i < howmany ; i++){
+            fputs(out_bufs[i], pf) ;
+			free(out_bufs[i]) ;
         }
-
-        fprintf(pf, "\n//");
-        if (ntbs > 0) {
-            for (k = 0; k < ntbs; k++)
-                printf("\t%s", tbsparamstrs[k]);
-        }
-        printf("\n");
-
-        segsites = generate_sample(list, &probss, &tmrca, &ttot);
-
-        if (pars.mp.timeflag)                                      
-            fprintf(pf, "time:\t%lf\t%lf\n", tmrca, ttot);
-
-        print_sample(pf, list, segsites, probss);
+        free(out_bufs);
     }
 
     if (!pars.commandlineseedflag)
         seedit("end");
+    
+    return 0 ;
+}
+
+static void run_one_replicate(FILE *pf, char **list)
+{
+    int segsites ;
+    double probss, tmrca, ttot;
+
+    segsites = generate_sample(pf, list, &probss, &tmrca, &ttot);
+    if (pars.mp.timeflag){
+        fprintf(pf, "time:\t%lf\t%lf\n", tmrca, ttot);
+    }
+    print_sample(pf, list, segsites, probss) ;
 }
 
 /**
@@ -254,7 +313,7 @@ int main(int argc, char *argv[])
  *	@return	ns : Cantidad de sitios segregantes
  *
  */
-static int generate_sample(char **list, double *pprobss, double *ptmrca, double *pttot)
+static int generate_sample(FILE *pf, char **list, double *pprobss, double *ptmrca, double *pttot)
 {
     int nsegs, i, ns = 0;
     struct segl *seglst;
@@ -262,7 +321,7 @@ static int generate_sample(char **list, double *pprobss, double *ptmrca, double 
     seglst = simulate_coalescent(&(pars.cp), &nsegs);
 
     if (pars.mp.treeflag)
-        print_segment_trees(seglst, nsegs);
+        print_segment_trees(pf, seglst, nsegs);
 
     if (pars.mp.timeflag)
         compute_tree_times(seglst, nsegs, ptmrca, pttot);
@@ -291,11 +350,12 @@ static int generate_sample(char **list, double *pprobss, double *ptmrca, double 
  *	@return	void 
  *
  */
-static void print_segment_trees(const struct segl *seglst, int nsegs)
+static void print_segment_trees(FILE *pf, const struct segl *seglst, int nsegs)
 {
     int seg, k, start, end, len;
     int nsites = pars.cp.nsites, nsam = pars.cp.nsam;
 
+    tree_output = pf ;
     for (seg = 0, k = 0; k < nsegs; seg = seglst[seg].next, k++) {
         if ((pars.cp.r > 0.0) || (pars.cp.f > 0.0)) {
             end = segment_end(seglst, seg, k, nsegs, nsites);
@@ -480,7 +540,6 @@ static void ensure_sites_capacity(int needed, int nsam, char **list)
  */
 static char **allocate_buffers(void)
 {
-    int i;
     char **list;
 
     if (pars.mp.segsitesin == 0) {                  // Tasa de mutación con -t theta
@@ -492,11 +551,6 @@ static char **allocate_buffers(void)
         list = cmatrix(pars.cp.nsam, pars.mp.segsitesin + 1);
         posit = (double *)malloc((unsigned)(pars.mp.segsitesin * sizeof(double)));
         agevec = (double *)malloc((unsigned)(pars.mp.segsitesin * sizeof(double)));
-        if (pars.mp.theta > 0.0) {
-            segfac = 1.0;                           // segfac = segsitesin!
-            for (i = pars.mp.segsitesin; i > 1; i--)
-                segfac *= i;
-        }
     }
     return (list);
 }
@@ -1275,7 +1329,7 @@ static double random_age_in_branch(const struct node *ptree, int i)
 
 static void tree_clean(void)
 {
-    fwrite(tree_buffer, 1, tree_len, stdout);
+    fwrite(tree_buffer, 1, tree_len, tree_output);
     tree_len = 0 ;
 }
 
@@ -1434,6 +1488,7 @@ static double gasdev(double m, double v)
 {
     static int iset = 0;
     static float gset;
+    #pragma omp threadprivate(iset, gset)
     float fac, r, v1, v2;
 
     if (iset == 0) {
