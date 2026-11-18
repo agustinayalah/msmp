@@ -6,12 +6,12 @@
 #include <omp.h>
 #endif
 
-void seedit(char *flag);
-int commandlineseed(char **seeds);
+void seedit(const char *flag);
+int commandlineseed(char *const *seeds);
 void ms_seed_thread(void);
 
 static unsigned short master_seed[3] = { 3579, 27011, 59243 } ;
-static unsigned short ms_xsubi[3] = { 3579, 27011, 59243 } ;
+unsigned short ms_xsubi[3] = { 3579, 27011, 59243 } ;
 
 #pragma omp threadprivate(ms_xsubi)
 
@@ -27,9 +27,9 @@ void ms_seed_thread(void)
 	ms_xsubi[2] = (unsigned short)( master_seed[2] ^ (unsigned short)(tid * 0xC2B2u + 0x5u) );
 }
 
-void seedit(char *flag)
+void seedit(const char *flag)
 {
-	FILE *fopen(), *pfseed;
+	FILE *pfseed;
 	unsigned short seedv2[3] ;
 	int i;
  
@@ -63,7 +63,7 @@ void seedit(char *flag)
 	}
 }
  
-int commandlineseed(char **seeds)
+int commandlineseed(char *const *seeds)
 {
 	master_seed[0] = (unsigned short) atoi( seeds[0] );
 	master_seed[1] = (unsigned short) atoi( seeds[1] );
